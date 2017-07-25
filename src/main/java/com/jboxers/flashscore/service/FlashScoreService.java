@@ -1,22 +1,26 @@
 package com.jboxers.flashscore.service;
 
+import com.google.common.primitives.Bytes;
 import com.jboxers.flashscore.domain.Game;
 import com.jboxers.flashscore.domain.Stat;
+import com.jboxers.flashscore.util.Gzip;
 import org.jsoup.Jsoup;
 import org.jsoup.select.Elements;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
+import reactor.ipc.netty.http.client.HttpClientOptions;
 
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.stream.IntStream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -29,7 +33,7 @@ public class FlashScoreService {
     private final WebClient client;
 
     public FlashScoreService(){
-        this.client = WebClient.create();
+        this.client = WebClient.builder().;
     }
 
     private static final String URL = "http://www.flashscore.mobi/";
@@ -56,10 +60,22 @@ public class FlashScoreService {
                 .get()
                 .uri(uri)
                 .header("X-Fsign","SW9D1eZo")
-                .retrieve()
-                .bodyToMono(String.class)
+                .header("Accept-Encoding", "gzip")
+                .header("Accept-Charset", "utf-8")
+                .header("Pragma", "no-cache")
+                .header("Cache-control", "no-cache")
+                .exchange()
+                .flatMapMany(s-> s.body(BodyExtractors.toDataBuffers()))
+                .map(buffer->{
+                    ByteBuffer byteBuffer = buffer.asByteBuffer();
+                    byte[] byteArray = new byte[byteBuffer.remaining()];
+                    byteBuffer.get(byteArray);
+                    return byteArray;
+                })
+                .reduce(Bytes::concat)
+                .map(Gzip::decompress)
                 .timeout(Duration.ofSeconds(35))
-                .log("category", Level.ALL, SignalType.ON_ERROR, SignalType.ON_COMPLETE, SignalType.CANCEL, SignalType.REQUEST);
+                .log("category", Level.OFF, SignalType.ON_ERROR, SignalType.ON_COMPLETE, SignalType.CANCEL, SignalType.REQUEST);
     }
 
 
