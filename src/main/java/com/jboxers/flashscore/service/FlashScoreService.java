@@ -33,7 +33,7 @@ public class FlashScoreService {
     private final WebClient client;
 
     public FlashScoreService(){
-        this.client = WebClient.builder().;
+        this.client = WebClient.create();
     }
 
     private static final String URL = "http://www.flashscore.mobi/";
