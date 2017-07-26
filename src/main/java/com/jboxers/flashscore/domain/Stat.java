@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -23,27 +24,31 @@ public class Stat {
     @JsonGetter
     public float getOverPercentage() {
         int size = getSize();
-        return size == 0 ? size : (float)getLastNGames(LIMIT).stream().filter(Game::isOver).count() / size * 100;
+        return size == 0 ? size : (float)getLastNGames(LIMIT).filter(Game::isOver).count() / size * 100;
     }
 
     @JsonGetter
     public float getUnderPercentage() {
         int size = getSize();
-        return size == 0 ? size : (float)getLastNGames(LIMIT).stream().filter(Game::isUnder).count() / size * 100;
+        return size == 0 ? size : (float)getLastNGames(LIMIT).filter(Game::isUnder).count() / size * 100;
     }
 
     @JsonGetter
     public float getBothTeamsScoredPercentage(){
         int size = getSize();
-        return size == 0 ? size : (float)getLastNGames(LIMIT).stream().filter(Game::isBothTeamsScored).count() / size * 100;
+        return size == 0 ? size : (float)getLastNGames(LIMIT).filter(Game::isBothTeamsScored).count() / size * 100;
     }
 
-    private List<Game> getLastNGames(int n) {
-        return games.stream().limit(n).collect(toList());
+    private Stream<Game> getLastNGames(int n) {
+        return games.stream().limit(n);
     }
 
     public int getSize() {
         return games.size() < LIMIT ? games.size() : LIMIT;
+    }
+
+    public int getAllSize(){
+        return games.size();
     }
 
 }

@@ -19,45 +19,39 @@ public class Game {
     private String score;
     private String league;
 
-    private Integer homeScore;
-    private Integer awayScore;
+//    private Integer homeScore;
+//    private Integer awayScore;
 
-    private static String[] splitScore(String score){
+    private static String[] splitScore(String score) {
         return score.contains("(") ?
-                score.substring(0, score.indexOf("(")).split(":") :  score.split(":");
+                score.substring(0, score.indexOf("(")).split(":") : score.split(":");
     }
 
-    private Integer getHomeScore(){
-        if(hasScore() && Objects.isNull(homeScore)){
-            homeScore = new Integer(splitScore(score)[0].trim());
-        }
-        return homeScore;
+    private Integer getHomeScore() {
+        return hasScore() ? new Integer(splitScore(score)[0].trim()) : null;
     }
 
-    private Integer getAwayScore(){
-        if(hasScore() && Objects.isNull(awayScore)){
-            awayScore = new Integer(splitScore(score)[1].trim());
-        }
-        return awayScore;
+    private Integer getAwayScore() {
+        return hasScore() ? new Integer(splitScore(score)[1].trim()) : null;
     }
 
-    private boolean hasScore(){
-        return splitScore(score).length  == 2;
+    private boolean hasScore() {
+        return splitScore(score).length == 2;
     }
 
-    public boolean isOver(){
-       return getTotalGoals() > 2.5;
+    public boolean isOver() {
+        return getTotalGoals() > 2.5;
     }
 
-    public int getTotalGoals(){
+    public Integer getTotalGoals() {
         return hasScore() ? getAwayScore() + getHomeScore() : 0;
     }
 
-    public boolean isUnder(){
-       return !isOver();
+    public boolean isUnder() {
+        return !isOver();
     }
 
-    public boolean isBothTeamsScored(){
-        return hasScore() && (!homeScore.equals(0) && !awayScore.equals(0));
+    public boolean isBothTeamsScored() {
+        return hasScore() && (!Objects.equals(getHomeScore(), 0) && !Objects.equals(getAwayScore(), 0));
     }
 }
