@@ -1,5 +1,6 @@
 package com.jboxers.flashscore.domain;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Data;
 
@@ -17,6 +18,7 @@ public class Game {
     private LocalDate date;
     private String score;
     private String league;
+
     private Integer homeScore;
     private Integer awayScore;
 
@@ -26,17 +28,21 @@ public class Game {
     }
 
     private Integer getHomeScore(){
-        if(Objects.isNull(homeScore)){
+        if(hasScore() && Objects.isNull(homeScore)){
             homeScore = new Integer(splitScore(score)[0].trim());
         }
         return homeScore;
     }
 
     private Integer getAwayScore(){
-        if(Objects.isNull(awayScore)){
+        if(hasScore() && Objects.isNull(awayScore)){
             awayScore = new Integer(splitScore(score)[1].trim());
         }
         return awayScore;
+    }
+
+    private boolean hasScore(){
+        return splitScore(score).length  == 2;
     }
 
     public boolean isOver(){
@@ -44,7 +50,7 @@ public class Game {
     }
 
     public int getTotalGoals(){
-        return getAwayScore() + getHomeScore();
+        return hasScore() ? getAwayScore() + getHomeScore() : 0;
     }
 
     public boolean isUnder(){
@@ -52,6 +58,6 @@ public class Game {
     }
 
     public boolean isBothTeamsScored(){
-        return  !homeScore.equals(0) && !awayScore.equals(0);
+        return hasScore() && (!homeScore.equals(0) && !awayScore.equals(0));
     }
 }

@@ -6,12 +6,14 @@ import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.util.Gzip;
 import org.jsoup.Jsoup;
 import org.jsoup.select.Elements;
+import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
+import reactor.ipc.netty.http.client.HttpClient;
 import reactor.ipc.netty.http.client.HttpClientOptions;
 
 import java.nio.ByteBuffer;
@@ -20,6 +22,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
 import static java.util.stream.Collectors.toList;
@@ -33,7 +36,9 @@ public class FlashScoreService {
     private final WebClient client;
 
     public FlashScoreService(){
-        this.client = WebClient.create();
+        this.client = WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClientOptions -> HttpClient.create(HttpClientOptions::disablePool) ))
+                .build();
     }
 
     private static final String URL = "http://www.flashscore.mobi/";
