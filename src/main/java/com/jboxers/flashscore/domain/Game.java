@@ -6,6 +6,8 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * Created by nikolayrusev on 6/30/17.
@@ -19,20 +21,17 @@ public class Game {
     private String score;
     private String league;
 
-//    private Integer homeScore;
-//    private Integer awayScore;
-
     private static String[] splitScore(String score) {
         return score.contains("(") ?
                 score.substring(0, score.indexOf("(")).split(":") : score.split(":");
     }
 
-    private Integer getHomeScore() {
-        return hasScore() ? new Integer(splitScore(score)[0].trim()) : null;
+    private Optional<Integer> getHomeScore() {
+        return hasScore() ? Optional.of(new Integer(splitScore(score)[0].trim())) : Optional.empty();
     }
 
-    private Integer getAwayScore() {
-        return hasScore() ? new Integer(splitScore(score)[1].trim()) : null;
+    private Optional<Integer> getAwayScore() {
+        return hasScore() ? Optional.of(new Integer(splitScore(score)[1].trim())) : Optional.empty();
     }
 
     private boolean hasScore() {
@@ -44,7 +43,10 @@ public class Game {
     }
 
     public Integer getTotalGoals() {
-        return hasScore() ? getAwayScore() + getHomeScore() : 0;
+        return Stream.of(getAwayScore(),getHomeScore())
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .reduce(0,(a,b)-> a + b);
     }
 
     public boolean isUnder() {
@@ -52,6 +54,10 @@ public class Game {
     }
 
     public boolean isBothTeamsScored() {
-        return hasScore() && (!Objects.equals(getHomeScore(), 0) && !Objects.equals(getAwayScore(), 0));
+        return Stream.of(getAwayScore(),getHomeScore())
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .filter(q->!Objects.equals(0,q))
+                .count() > 1;
     }
 }
