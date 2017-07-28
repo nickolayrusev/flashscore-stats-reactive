@@ -4,8 +4,6 @@ import com.google.common.primitives.Bytes;
 import com.jboxers.flashscore.domain.Game;
 import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.util.Gzip;
-import lombok.Data;
-import lombok.ToString;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -13,13 +11,10 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
 import reactor.ipc.netty.http.client.HttpClient;
 import reactor.ipc.netty.http.client.HttpClientOptions;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuple3;
 import reactor.util.function.Tuple4;
 import reactor.util.function.Tuples;
 
@@ -30,7 +25,6 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
-import java.util.function.Function;
 import java.util.logging.Level;
 
 import static java.util.stream.Collectors.toList;
@@ -53,7 +47,7 @@ public class FlashScoreService {
 
     public Mono<List<Stat>> fetch() {
         return fetchData(URL)
-                .map(this::extractUrls)
+                .map(this::extractGameMetadata)
 //                .doOnNext(System.out::println)
                 .doOnNext(s -> System.out.println("all ids are " + s.size()))
                 .flatMapIterable(q -> q)
@@ -66,7 +60,12 @@ public class FlashScoreService {
                 .collectList();
     }
 
-    private List<Tuple4<String,String,String,String>> extractUrls(String data) {
+    /**
+     * 1. url, 2. League 3. state 4. score
+     * @param data
+     * @return
+     */
+    private List<Tuple4<String,String,String,String>> extractGameMetadata(String data) {
         return Jsoup.parse(data).select("div[id=score-data] > a")
                 .stream()
                 .map(e -> {
