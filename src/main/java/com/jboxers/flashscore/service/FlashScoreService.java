@@ -4,25 +4,33 @@ import com.google.common.primitives.Bytes;
 import com.jboxers.flashscore.domain.Game;
 import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.util.Gzip;
+import lombok.Data;
+import lombok.ToString;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
 import reactor.ipc.netty.http.client.HttpClient;
 import reactor.ipc.netty.http.client.HttpClientOptions;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
+import reactor.util.function.Tuple4;
+import reactor.util.function.Tuples;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Comparator;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.logging.Level;
 
 import static java.util.stream.Collectors.toList;
@@ -35,9 +43,9 @@ public class FlashScoreService {
 
     private final WebClient client;
 
-    public FlashScoreService(){
+    public FlashScoreService() {
         this.client = WebClient.builder()
-                .clientConnector(new ReactorClientHttpConnector(httpClientOptions -> HttpClient.create(HttpClientOptions::disablePool) ))
+                .clientConnector(new ReactorClientHttpConnector(httpClientOptions -> HttpClient.create(HttpClientOptions::disablePool)))
                 .build();
     }
 
@@ -46,32 +54,50 @@ public class FlashScoreService {
     public Mono<List<Stat>> fetch() {
         return fetchData(URL)
                 .map(this::extractUrls)
-                .doOnNext(System.out::println)
-                .doOnNext(s-> System.out.println("all ids are "+s.size()))
-                .flatMapIterable(q->q)
-                .map(s -> s.substring(7, 15))
-                .map(s -> "http://d.flashscore.com/x/feed/d_hh_" + s + "_en_1")
-                .flatMap(this::fetchData)
-                .map(this::extractHeadToHead)
+//                .doOnNext(System.out::println)
+                .doOnNext(s -> System.out.println("all ids are " + s.size()))
+                .flatMapIterable(q -> q)
+                .map(t-> Tuples.of("http://d.flashscore.com/x/feed/d_hh_" + t.getT1().substring(7,15) + "_en_1",
+                        t.getT2(),
+                        t.getT3(),
+                        t.getT4()))
+                .flatMap(t-> fetchData(t.getT1()).map(s->Tuples.of(s,t.getT2(),t.getT3(),t.getT4())))
+                .map(t->extractHeadToHead(t.getT1(),t.getT2(), t.getT3(),t.getT4()))
                 .collectList();
     }
 
-    private List<String> extractUrls(String data) {
-        return Jsoup.parse(data).select("div[id=score-data] > a").eachAttr("href");
+    private List<Tuple4<String,String,String,String>> extractUrls(String data) {
+        return Jsoup.parse(data).select("div[id=score-data] > a")
+                .stream()
+                .map(e -> {
+                    String h4 = e.siblingElements()
+                            .select("h4")
+                            .stream()
+                            .filter(i -> i.elementSiblingIndex() < e.elementSiblingIndex())
+                            .sorted(Comparator.comparingInt(Element::elementSiblingIndex).reversed())
+                            .findFirst()
+                            .map(Element::text)
+                            .orElse("");
+
+                    return Tuples.of(e.attr("href"),
+                            h4,
+                            e.className(),
+                            e.before("h4").text());
+                }).collect(toList());
     }
 
     private Mono<String> fetchData(String uri) {
         return this.client
                 .get()
                 .uri(uri)
-                .header("X-Fsign","SW9D1eZo")
+                .header("X-Fsign", "SW9D1eZo")
                 .header("Accept-Encoding", "gzip")
                 .header("Accept-Charset", "utf-8")
                 .header("Pragma", "no-cache")
                 .header("Cache-control", "no-cache")
                 .exchange()
-                .flatMapMany(s-> s.body(BodyExtractors.toDataBuffers()))
-                .map(buffer->{
+                .flatMapMany(s -> s.body(BodyExtractors.toDataBuffers()))
+                .map(buffer -> {
                     ByteBuffer byteBuffer = buffer.asByteBuffer();
                     byte[] byteArray = new byte[byteBuffer.remaining()];
                     byteBuffer.get(byteArray);
@@ -84,7 +110,7 @@ public class FlashScoreService {
     }
 
 
-    private Stat extractHeadToHead(String data) {
+    private Stat extractHeadToHead(String data, String champ, String status, String gameScore) {
         Elements select = Jsoup.parse(data).select("#tab-h2h-overall .h2h_mutual");
         String title = select.select("thead > tr").text().substring("Head-to-head matches: ".length());
         Elements tr = select.select("tbody > tr");
@@ -107,6 +133,6 @@ public class FlashScoreService {
                     .build();
         }).collect(toList());
 
-        return Stat.builder().games(games).id(title).build();
+        return Stat.builder().games(games).id(title).status(status).score(gameScore).league(champ).build();
     }
 }

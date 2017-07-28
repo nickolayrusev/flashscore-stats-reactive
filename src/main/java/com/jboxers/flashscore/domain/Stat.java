@@ -19,6 +19,8 @@ public class Stat {
     private String id;
     private String status;
     private boolean isLive;
+    private String league;
+    private String score;
     private List<Game> games;
 
     @JsonGetter
