@@ -10,6 +10,8 @@ import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
 
+import static com.jboxers.flashscore.util.ByteBufferUtils.toByteBuffer;
+
 /**
  * Created by nikolayrusev on 7/12/17.
  */
@@ -27,13 +29,4 @@ public class GameController {
         return this.connection.stringCommands().get(toByteBuffer(date));
     }
 
-    private static ByteBuffer toByteBuffer(String data){
-        return ByteBuffer.wrap(data.getBytes());
-    }
-
-    private static String toString(ByteBuffer byteBuffer) {
-        byte[] bytes = new byte[byteBuffer.remaining()];
-        byteBuffer.get(bytes);
-        return new String(bytes);
-    }
 }

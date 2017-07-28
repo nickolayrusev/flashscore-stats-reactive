@@ -39,6 +39,11 @@ public class Stat {
         return size == 0 ? size : (float)getLastNGames(LIMIT).filter(Game::isBothTeamsScored).count() / size * 100;
     }
 
+    @JsonGetter
+    public double getAverageGoals(){
+        return getLastNGames(LIMIT).mapToInt(Game::getTotalGoals).average().orElse(0);
+    }
+
     private Stream<Game> getLastNGames(int n) {
         return games.stream().limit(n);
     }
