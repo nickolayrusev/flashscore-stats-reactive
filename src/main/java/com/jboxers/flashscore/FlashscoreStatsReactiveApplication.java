@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.listener.PatternTopic;
@@ -32,10 +33,17 @@ public class FlashscoreStatsReactiveApplication {
 		listenerContainer.setConnectionFactory(redisConnectionFactory());
 
 		listenerContainer.addMessageListener((message, pattern) -> {
-
+			RedisConnection redisConnection = redisConnectionFactory().getConnection();
 			System.out.println("handling " + new String(message.getBody()) + " " + new String(message.getChannel())
 					+ " " + new String(pattern));
+			final String key = new String(message.getBody()).split(":")[1];
 
+			byte[] bytes = redisConnection
+					.stringCommands()
+					.get(("temp:" + key).getBytes());
+
+			redisConnection.stringCommands().set(("final:"+key).getBytes(),bytes);
+			redisConnection.keyCommands().del(("temp:" + key).getBytes());
 		}, new PatternTopic("__key*__:expired"));
 
 		return listenerContainer;

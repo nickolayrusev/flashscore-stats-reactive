@@ -8,6 +8,11 @@ import java.nio.ByteBuffer;
 public abstract class ByteBufferUtils {
     private ByteBufferUtils(){}
 
+    public static ByteBuffer toByteBuffer(byte[] data){
+        return ByteBuffer.wrap(data);
+
+    }
+
     public static ByteBuffer toByteBuffer(String data){
         return ByteBuffer.wrap(data.getBytes());
     }

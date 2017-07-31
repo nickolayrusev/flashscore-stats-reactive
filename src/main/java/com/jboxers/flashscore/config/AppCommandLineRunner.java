@@ -16,6 +16,8 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import static com.jboxers.flashscore.util.ByteBufferUtils.toByteBuffer;
+
 /**
  * Created by nikolayrusev on 7/12/17.
  */
@@ -39,8 +41,8 @@ public class AppCommandLineRunner implements CommandLineRunner {
     public void run(String... strings) throws Exception {
         this.flashScoreService.fetch().subscribe(l -> {
             System.out.println("finished " + l.size());
-            this.connection.stringCommands().set(ByteBuffer.wrap(getCurrentDate().getBytes()),
-                    ByteBuffer.wrap(serializeValues(l))).subscribe();
+            this.connection.stringCommands().set(toByteBuffer("temp:"+getCurrentDate()),
+                    toByteBuffer(serializeValues(l))).subscribe();
         });
     }
 
