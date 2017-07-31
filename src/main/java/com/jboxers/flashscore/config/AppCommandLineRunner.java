@@ -40,20 +40,20 @@ public class AppCommandLineRunner implements CommandLineRunner {
         this.flashScoreService.fetch().subscribe(l -> {
             System.out.println("finished " + l.size());
             this.connection.stringCommands().set(ByteBuffer.wrap(getCurrentDate().getBytes()),
-                    ByteBuffer.wrap(serializeValues(l).getBytes())).subscribe();
+                    ByteBuffer.wrap(serializeValues(l))).subscribe();
         });
     }
 
-    private String serializeValues(List<Stat> stats) {
+    public byte[] serializeValues(List<Stat> stats) {
         try {
-            return this.objectMapper.writeValueAsString(stats);
+            return this.objectMapper.writeValueAsString(stats).getBytes();
         } catch (JsonProcessingException e) {
             e.printStackTrace();
-            return "";
+            return "".getBytes();
         }
     }
 
-    private String getCurrentDate() {
+    public String getCurrentDate() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         return Instant.now().atZone(ZoneId.of("UTC")).format(formatter);
     }

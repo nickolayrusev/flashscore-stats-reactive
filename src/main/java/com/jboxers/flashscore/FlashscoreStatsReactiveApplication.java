@@ -36,21 +36,12 @@ public class FlashscoreStatsReactiveApplication {
 			System.out.println("handling " + new String(message.getBody()) + " " + new String(message.getChannel())
 					+ " " + new String(pattern));
 
-		}, new PatternTopic("__key*__:*"));
+		}, new PatternTopic("__key*__:expired"));
 
 		return listenerContainer;
 	}
 
 	public static void main(String[] args) {
 		SpringApplication.run(FlashscoreStatsReactiveApplication.class, args);
-
-
-//		ApplicationContext ctx = new AnnotationConfigApplicationContext(FlashscoreStatsReactiveApplication.class);
-//
-//		FlashScoreService bean = ctx.getBean(FlashScoreService.class);
-//		bean.fetch().subscribe(s->{
-//			System.out.println("finished !!! " + s.size());
-//
-//		},Throwable::printStackTrace);
 	}
 }
