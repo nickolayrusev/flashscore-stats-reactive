@@ -9,6 +9,8 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.listener.PatternTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
 import javax.annotation.PreDestroy;
 
@@ -23,6 +25,21 @@ public class FlashscoreStatsReactiveApplication {
 		return new LettuceConnectionFactory("127.0.0.1",6379);
 	}
 
+	@Bean
+	RedisMessageListenerContainer keyExpirationListenerContainer() {
+
+		RedisMessageListenerContainer listenerContainer = new RedisMessageListenerContainer();
+		listenerContainer.setConnectionFactory(redisConnectionFactory());
+
+		listenerContainer.addMessageListener((message, pattern) -> {
+
+			System.out.println("handling " + new String(message.getBody()) + " " + new String(message.getChannel())
+					+ " " + new String(pattern));
+
+		}, new PatternTopic("__key*__:*"));
+
+		return listenerContainer;
+	}
 
 	public static void main(String[] args) {
 		SpringApplication.run(FlashscoreStatsReactiveApplication.class, args);
