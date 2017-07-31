@@ -26,7 +26,7 @@ public class FlashscoreStatsReactiveApplication {
 	}
 
 	@Bean
-	RedisMessageListenerContainer keyExpirationListenerContainer() {
+	public RedisMessageListenerContainer keyExpirationListenerContainer() {
 
 		RedisMessageListenerContainer listenerContainer = new RedisMessageListenerContainer();
 		listenerContainer.setConnectionFactory(redisConnectionFactory());
