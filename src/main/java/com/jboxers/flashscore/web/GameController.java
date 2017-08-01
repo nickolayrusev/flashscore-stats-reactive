@@ -22,10 +22,10 @@ import static com.jboxers.flashscore.util.ByteBufferUtils.toByteBuffer;
  */
 @RestController
 public class GameController {
-    private static final int CACHE_MINUTES = 1;
-    private static final String finalDate = "final:";
-    private static final String tempDate = "temp:";
-    private static final String shadowDate = "shadow:";
+    private static final int CACHE_MINUTES = 10;
+    private static final String FINAL_DATE = "final:";
+    private static final String TEMP_DATE = "temp:";
+    private static final String SHADOW_DATE = "shadow:";
 
     private final ReactiveRedisConnection connection;
     private final FlashScoreService flashScoreService;
@@ -42,28 +42,28 @@ public class GameController {
 
     @GetMapping("/games/{date}")
     public Mono<ByteBuffer> games(@PathVariable("date") String date) {
-        if (!runner.getCurrentDate().equals(date))
-            return this.connection.stringCommands().get(toByteBuffer(finalDate + date));
-
+        final String currentDate = runner.getCurrentDate();
+        if (!currentDate.equals(date))
+            return this.stringCommands.get(toByteBuffer(FINAL_DATE + date));
         //today
-        return this.connection.keyCommands().exists(toByteBuffer(tempDate + date)).flatMap(r -> {
+        return this.connection.keyCommands().exists(toByteBuffer(TEMP_DATE + date)).flatMap(r -> {
             if (r) {
-                System.out.println("exists -- " + tempDate + date);
-                return this.stringCommands.get(toByteBuffer(tempDate + date));
+                System.out.println("exists -- " + TEMP_DATE + date);
+                return this.stringCommands.get(toByteBuffer(TEMP_DATE + date));
             } else {
-                System.out.println("don't exists -- " + date);
+                System.out.println("don't exists -- " + TEMP_DATE + date);
                 return this.flashScoreService
                         .fetch()
                         .doOnNext(list -> System.out.println("finished " + list.size()))
                         .map(result -> toByteBuffer(runner.serializeValues(result)))
-                        .flatMap(buffer -> this.stringCommands.set(toByteBuffer(tempDate + runner.getCurrentDate()), buffer)
+                        .flatMap(buffer -> this.stringCommands.set(toByteBuffer(TEMP_DATE + currentDate), buffer)
                                 .flatMap(success -> {
                                     if (success) {
                                         return this.stringCommands
-                                                .setEX(toByteBuffer(shadowDate + runner.getCurrentDate()),
+                                                .setEX(toByteBuffer(SHADOW_DATE + currentDate),
                                                         toByteBuffer(""),
                                                         Expiration.from(Duration.ofMinutes(CACHE_MINUTES)))
-                                                .flatMap(q -> this.stringCommands.get(toByteBuffer(tempDate + runner.getCurrentDate())));
+                                                .flatMap(q -> this.stringCommands.get(toByteBuffer(TEMP_DATE + currentDate)));
                                     } else {
                                         return Mono.just(toByteBuffer("{}"));
                                     }
