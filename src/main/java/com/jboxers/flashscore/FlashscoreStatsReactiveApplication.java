@@ -12,8 +12,11 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.web.reactive.config.CorsRegistry;
 
 import javax.annotation.PreDestroy;
+
+import static com.jboxers.flashscore.web.GameController.*;
 
 @SpringBootApplication
 public class FlashscoreStatsReactiveApplication {
@@ -36,14 +39,18 @@ public class FlashscoreStatsReactiveApplication {
 			RedisConnection redisConnection = redisConnectionFactory().getConnection();
 			System.out.println("handling " + new String(message.getBody()) + " " + new String(message.getChannel())
 					+ " " + new String(pattern));
-			final String key = new String(message.getBody()).split(":")[1];
 
-			byte[] bytes = redisConnection
-					.stringCommands()
-					.get(("temp:" + key).getBytes());
+			final String body =new String(message.getBody());
+			if(SHADOW_DATE.equals(body.split(":")[0])) {
+				final String key = body.split(":")[1];
 
-			redisConnection.stringCommands().set(("final:"+key).getBytes(),bytes);
-			redisConnection.keyCommands().del(("temp:" + key).getBytes());
+				byte[] bytes = redisConnection
+						.stringCommands()
+						.get( (TEMP_DATE_KEY  + key).getBytes());
+
+				redisConnection.stringCommands().set((FINAL_DATE_KEY  + key).getBytes(), bytes);
+				redisConnection.keyCommands().del((TEMP_DATE_KEY + key).getBytes());
+			}
 		}, new PatternTopic("__key*__:expired"));
 
 		return listenerContainer;
