@@ -34,4 +34,10 @@ public class JSoupTest {
                     return Tuples.of("","");
                 }).forEach(System.out::println);
     }
+
+    @Test
+    public void testRounding(){
+        float f = (float)4 / 9 * 100;
+        System.out.println(Math.round(f));
+    }
 }
