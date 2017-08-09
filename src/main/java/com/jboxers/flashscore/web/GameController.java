@@ -24,7 +24,7 @@ import static com.jboxers.flashscore.util.ByteBufferUtils.toByteBuffer;
 @RestController
 @CrossOrigin
 public class GameController {
-    private static final int CACHE_MINUTES = 3;
+    private static final int CACHE_MINUTES = 20;
     private static final String FINAL_DATE = "final";
     private static final String TEMP_DATE = "temp";
     public static final String SHADOW_DATE = "shadow";
