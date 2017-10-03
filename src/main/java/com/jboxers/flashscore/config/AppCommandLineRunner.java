@@ -39,20 +39,24 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     @Override
     public void run(String... strings) throws Exception {
-//        this.flashScoreService.fetch().subscribe(l -> {
-//            System.out.println("finished " + l.size());
-//            this.connection.stringCommands().set(toByteBuffer("final:"+getCurrentDate()),
-//                    toByteBuffer(serializeValues(l))).subscribe();
-//        });
+        this.flashScoreService.fetch().subscribe(l -> {
+            this.connection.stringCommands().set(toByteBuffer("temp:"+getCurrentDate()),
+                    toByteBuffer(serializeValues(l))).subscribe();
+        });
     }
 
-    public byte[] serializeValues(List<Stat> stats) {
+    public String serializeValuesAsString(List<Stat> stats) {
         try {
-            return this.objectMapper.writeValueAsString(stats).getBytes();
+            return this.objectMapper.writeValueAsString(stats);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
-            return "".getBytes();
+            return "";
         }
+    }
+
+
+    public byte[] serializeValues(List<Stat> stats) {
+        return serializeValuesAsString(stats).getBytes();
     }
 
     public String getCurrentDate() {

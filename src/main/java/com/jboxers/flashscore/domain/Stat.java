@@ -5,9 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toList;
+import java.util.stream.Collectors;
 
 /**
  * Created by nikolayrusev on 7/3/17.
@@ -15,47 +13,28 @@ import static java.util.stream.Collectors.toList;
 @Data
 @Builder
 public class Stat {
-    private static final int LIMIT = 5;
+    private static final int LIMIT = 20;
     private String id;
     private String status;
     private boolean isLive;
     private String league;
     private String score;
-    private List<Game> games;
+    private List<Game> headToHeadGames;
+    private List<Game> homeTeamGames;
+    private List<Game> awayTeamGames;
 
     @JsonGetter
-    public float getOverPercentage() {
-        int size = getSize();
-        return size == 0 ? size : (float)getLastNGames(LIMIT).filter(Game::isOver).count() / size * 100;
-    }
-
-    @JsonGetter
-    public float getUnderPercentage() {
-        int size = getSize();
-        return size == 0 ? size : (float)getLastNGames(LIMIT).filter(Game::isUnder).count() / size * 100;
+    public List<Game> getHeadToHeadGames(){
+        return headToHeadGames.stream().limit(LIMIT).collect(Collectors.toList());
     }
 
     @JsonGetter
-    public float getBothTeamsScoredPercentage(){
-        int size = getSize();
-        return size == 0 ? size : (float)getLastNGames(LIMIT).filter(Game::isBothTeamsScored).count() / size * 100;
+    public List<Game> getHomeTeamGames() {
+        return homeTeamGames.stream().limit(LIMIT).collect(Collectors.toList());
     }
 
     @JsonGetter
-    public double getAverageGoals(){
-        return getLastNGames(LIMIT).mapToInt(Game::getTotalGoals).average().orElse(0);
+    public List<Game> getAwayTeamGames() {
+        return awayTeamGames.stream().limit(LIMIT).collect(Collectors.toList());
     }
-
-    private Stream<Game> getLastNGames(int n) {
-        return games.stream().limit(n);
-    }
-
-    public int getSize() {
-        return games.size() < LIMIT ? games.size() : LIMIT;
-    }
-
-    public int getAllSize(){
-        return games.size();
-    }
-
 }

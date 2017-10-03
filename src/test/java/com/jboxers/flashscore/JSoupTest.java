@@ -7,9 +7,14 @@ import reactor.util.function.Tuples;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.stream.Stream;
 
+import static com.jboxers.flashscore.service.FlashScoreService.splitBySeparator;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -33,6 +38,13 @@ public class JSoupTest {
                             .orElse("");
                     return Tuples.of("","");
                 }).forEach(System.out::println);
+    }
+
+    private Stream<String> stream  = Stream.of("a","b","c","-","d","e","f","-","g");
+
+    @Test
+    public void consumer(){
+//        stream.collect(splitBySeparator(s->s.equals("-"))).forEach(System.out::println);
     }
 
     @Test

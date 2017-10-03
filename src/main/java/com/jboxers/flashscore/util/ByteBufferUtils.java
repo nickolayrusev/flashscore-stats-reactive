@@ -17,9 +17,13 @@ public abstract class ByteBufferUtils {
         return ByteBuffer.wrap(data.getBytes());
     }
 
-    public static String toString(ByteBuffer byteBuffer) {
+    public static byte[] toByteArray(ByteBuffer byteBuffer){
         byte[] bytes = new byte[byteBuffer.remaining()];
         byteBuffer.get(bytes);
-        return new String(bytes);
+        return bytes;
+    }
+
+    public static String toString(ByteBuffer byteBuffer) {
+        return new String(toByteArray(byteBuffer));
     }
 }

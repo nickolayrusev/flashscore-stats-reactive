@@ -1,21 +1,25 @@
 package com.jboxers.flashscore.service;
 
+import com.google.common.collect.Lists;
 import com.google.common.primitives.Bytes;
 import com.jboxers.flashscore.domain.Game;
 import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.util.Gzip;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
-import reactor.ipc.netty.http.client.HttpClient;
-import reactor.ipc.netty.http.client.HttpClientOptions;
-import reactor.util.function.Tuple4;
+import reactor.ipc.netty.options.ClientOptions;
+import reactor.util.function.Tuple5;
 import reactor.util.function.Tuples;
 
 import java.nio.ByteBuffer;
@@ -23,9 +27,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
 import java.util.logging.Level;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+
 
 import static java.util.stream.Collectors.toList;
 
@@ -37,9 +48,11 @@ public class FlashScoreService {
 
     private final WebClient client;
 
+    private final static Logger logger = LoggerFactory.getLogger(FlashScoreService.class);
+
     public FlashScoreService() {
         this.client = WebClient.builder()
-                .clientConnector(new ReactorClientHttpConnector(httpClientOptions -> HttpClient.create(HttpClientOptions::disablePool)))
+                .clientConnector(new ReactorClientHttpConnector(ClientOptions.Builder::disablePool))
                 .build();
     }
 
@@ -49,27 +62,31 @@ public class FlashScoreService {
         return fetchData(URL)
                 .map(this::extractGameMetadata)
 //                .doOnNext(System.out::println)
-                .doOnNext(s -> System.out.println("all ids are " + s.size()))
+                .doOnNext(s -> logger.info("all ids are " + s.size()))
                 .flatMapIterable(q -> q)
-                .map(t-> Tuples.of("http://d.flashscore.com/x/feed/d_hh_" + t.getT1().substring(7,15) + "_en_1",
+                .map(t -> Tuples.of("http://d.flashscore.com/x/feed/d_hh_" + t.getT1().substring(7, 15) + "_en_1",
                         t.getT2(),
                         t.getT3(),
-                        t.getT4()))
-                .flatMap(t-> fetchData(t.getT1()).map(s->Tuples.of(s,t.getT2(),t.getT3(),t.getT4())))
-                .map(t->extractHeadToHead(t.getT1(),t.getT2(), t.getT3(),t.getT4()))
+                        t.getT4(),
+                        t.getT5()))
+                .flatMap(t -> fetchData(t.getT1()).delayElement(Duration.ofMillis(300)).map(s -> Tuples.of(s, t.getT2(), t.getT3(), t.getT4(), t.getT5())))
+                .map(t -> extractGames(t.getT1(), t.getT2(), t.getT3(), t.getT4(), t.getT5()))
                 .collectList();
     }
 
     /**
      * 1. url, 2. League 3. state 4. score
-     * @param data
+     * <p>
+     * out.html is data
+     *
+     * @param data out.html
      * @return
      */
-    private List<Tuple4<String,String,String,String>> extractGameMetadata(String data) {
+    private List<Tuple5<String, String, String, String, String>> extractGameMetadata(String data) {
         return Jsoup.parse(data).select("div[id=score-data] > a")
                 .stream()
                 .map(e -> {
-                    String h4 = e.siblingElements()
+                    String league = e.siblingElements()
                             .select("h4")
                             .stream()
                             .filter(i -> i.elementSiblingIndex() < e.elementSiblingIndex())
@@ -78,10 +95,24 @@ public class FlashScoreService {
                             .map(Element::text)
                             .orElse("");
 
-                    return Tuples.of(e.attr("href"),
-                            h4,
-                            e.className(),
-                            e.before("h4").text());
+                    List<String> nodes = e.parent()
+                            .childNodes()
+                            .stream()
+                            .filter(s -> s.siblingIndex() < e.siblingIndex())
+                            .collect(splitBySeparator(q -> q.outerHtml().equals("<br>")))
+                            .stream().map(s->s.stream()
+                                .filter(q->q instanceof TextNode)
+                                .map(Node::outerHtml)
+                                .map(String::trim)
+                                .filter(c -> !c.isEmpty())
+                                .collect(Collectors.joining(" "))
+                            ).collect(toList());
+
+                    return Tuples.of(e.attr("href"), //url
+                            league, //league
+                            e.className(), //state
+                            e.text(),//score
+                            Lists.reverse(nodes).get(0));//id
                 }).collect(toList());
     }
 
@@ -104,17 +135,36 @@ public class FlashScoreService {
                 })
                 .reduce(Bytes::concat)
                 .map(Gzip::decompress)
-                .timeout(Duration.ofSeconds(35))
+                .timeout(Duration.ofSeconds(45))
+                .retry(3, (e) -> e instanceof TimeoutException)
+                .onErrorResume(e -> {
+                    logger.error("error while retrieving game meta", e);
+                    return Mono.empty();
+                })
                 .log("category", Level.OFF, SignalType.ON_ERROR, SignalType.ON_COMPLETE, SignalType.CANCEL, SignalType.REQUEST);
     }
 
 
-    private Stat extractHeadToHead(String data, String champ, String status, String gameScore) {
-        Elements select = Jsoup.parse(data).select("#tab-h2h-overall .h2h_mutual");
-        String title = select.select("thead > tr").text().substring("Head-to-head matches: ".length());
+    private Stat extractGames(String data, String champ, String status, String gameScore, String id) {
+        List<Game> headToHeadGames = parseGames(data, ".h2h_mutual");
+        List<Game> homeGames = parseGames(data, ".h2h_home");
+        List<Game> awayGames = parseGames(data, ".h2h_away");
+        return Stat.builder()
+                .headToHeadGames(headToHeadGames)
+                .homeTeamGames(homeGames)
+                .awayTeamGames(awayGames)
+                .id(id)
+                .status(status)
+                .score(gameScore)
+                .league(champ)
+                .build();
+    }
+
+    private List<Game> parseGames(final String data, String className) {
+        Elements select = Jsoup.parse(data).select("#tab-h2h-overall " + className);
         Elements tr = select.select("tbody > tr");
 
-        List<Game> games = tr.stream().filter(q -> q.children().size() >= 5).map(q -> {
+        return tr.stream().filter(q -> q.children().size() >= 5).map(q -> {
             Elements td = q.children();
             String date = td.get(0).text(),
                     league = td.get(1).text(),
@@ -132,6 +182,19 @@ public class FlashScoreService {
                     .build();
         }).collect(toList());
 
-        return Stat.builder().games(games).id(title).status(status).score(gameScore).league(champ).build();
+    }
+
+    public static Collector<Node, List<List<Node>>, List<List<Node>>> splitBySeparator(Predicate<Node> sep) {
+        return Collector.of(() -> new ArrayList<List<Node>>(Arrays.asList(new ArrayList<>())),
+                (l, elem) -> {
+                    if (sep.test(elem)) {
+                        l.add(new ArrayList<>());
+                    } else l.get(l.size() - 1).add(elem);
+                },
+                (l1, l2) -> {
+                    l1.get(l1.size() - 1).addAll(l2.remove(0));
+                    l1.addAll(l2);
+                    return l1;
+                });
     }
 }
