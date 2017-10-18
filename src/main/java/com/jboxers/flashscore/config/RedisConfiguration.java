@@ -28,31 +28,4 @@ public class RedisConfiguration {
     public RedisConnectionFactory redisConnectionFactory() {
         return new LettuceConnectionFactory("127.0.0.1",6379);
     }
-
-    @Bean
-    public RedisMessageListenerContainer keyExpirationListenerContainer() {
-        RedisMessageListenerContainer listenerContainer = new RedisMessageListenerContainer();
-        listenerContainer.setConnectionFactory(redisConnectionFactory());
-
-        listenerContainer.addMessageListener((message, pattern) -> {
-            logger.info("handling " + new String(message.getBody()) + " " + new String(message.getChannel())
-                    + " " + new String(pattern));
-
-            RedisConnection redisConnection = redisConnectionFactory().getConnection();
-
-            final String body =new String(message.getBody());
-            if(SHADOW_DATE.equals(body.split(":")[0])) {
-                final String key = body.split(":")[1];
-
-                byte[] bytes = redisConnection
-                        .stringCommands()
-                        .get( (TEMP_DATE_KEY  + key).getBytes());
-
-                redisConnection.stringCommands().set((FINAL_DATE_KEY  + key).getBytes(), bytes);
-                redisConnection.keyCommands().del((TEMP_DATE_KEY + key).getBytes());
-            }
-        }, new PatternTopic("__key*__:expired"));
-
-        return listenerContainer;
-    }
 }

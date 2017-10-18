@@ -29,7 +29,7 @@ import static com.jboxers.flashscore.util.ByteBufferUtils.toByteBuffer;
 public class GameController {
     private final static Logger logger = LoggerFactory.getLogger(GameController.class);
 
-    public static final int CACHE_MINUTES = 20;
+//    public static final int CACHE_MINUTES = 20;
     private static final String FINAL_DATE = "final";
     private static final String TEMP_DATE = "temp";
     public static final String SHADOW_DATE = "shadow";

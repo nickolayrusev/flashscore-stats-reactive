@@ -12,6 +12,10 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyExtractors;
@@ -22,7 +26,9 @@ import reactor.ipc.netty.options.ClientOptions;
 import reactor.util.function.Tuple5;
 import reactor.util.function.Tuples;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -126,15 +132,19 @@ public class FlashScoreService {
                 .header("Pragma", "no-cache")
                 .header("Cache-control", "no-cache")
                 .exchange()
-                .flatMapMany(s -> s.body(BodyExtractors.toDataBuffers()))
-                .map(buffer -> {
-                    ByteBuffer byteBuffer = buffer.asByteBuffer();
-                    byte[] byteArray = new byte[byteBuffer.remaining()];
-                    byteBuffer.get(byteArray);
-                    return byteArray;
-                })
-                .reduce(Bytes::concat)
-                .map(Gzip::decompress)
+//                .flatMap(s-> s.body(BodyExtractors.toMono(String.class)))
+                .flatMap(response-> response.bodyToMono(ByteArrayResource.class))
+                .map(s->Gzip.decompress(s.getByteArray()))
+//                .flatMap(response -> response.bodyToMono(byte[].class))
+//                .flatMapMany(s->s.body(BodyExtractors.toDataBuffers()))
+//                .map(buffer -> {
+//                    byte[] result = new byte[buffer.readableByteCount()];
+//                    buffer.read(result);
+//                    DataBufferUtils.release(buffer);
+//                    return result;
+//                })
+//                .reduce(Bytes::concat)
+//                .map(Gzip::decompress)
                 .timeout(Duration.ofSeconds(45))
                 .retry(3, (e) -> e instanceof TimeoutException)
                 .onErrorResume(e -> {
