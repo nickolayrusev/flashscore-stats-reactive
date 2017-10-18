@@ -33,6 +33,8 @@ import static com.jboxers.flashscore.web.GameController.TEMP_DATE_KEY;
 public class AppCommandLineRunner implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(RedisMessageListener.class);
 
+    private static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
     private final FlashScoreService flashScoreService;
 
     private final ObjectMapper objectMapper;
@@ -74,12 +76,10 @@ public class AppCommandLineRunner implements CommandLineRunner {
     }
 
     public String getCurrentDate() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         return Instant.now().atZone(ZoneId.of("UTC")).format(formatter);
     }
 
     public String getTomorrowDate(){
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         return Instant.now().plus(1, ChronoUnit.DAYS).atZone(ZoneId.of("UTC")).format(formatter);
 
     }
