@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.data.redis.connection.ReactiveRedisConnection;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.connection.ReactiveStringCommands;
 import org.springframework.data.redis.core.types.Expiration;
@@ -19,6 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Random;
 
@@ -52,7 +52,7 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     @Override
     public void run(String... strings) throws Exception {
-        fetchAndSave().subscribe();
+//        fetchTodayAndSave().delayElement(Duration.ofMillis(499)).subscribe();
     }
 
     public String serializeValuesAsString(List<Stat> stats) {
@@ -69,13 +69,19 @@ public class AppCommandLineRunner implements CommandLineRunner {
         return serializeValuesAsString(stats).getBytes();
     }
 
-    public Mono<Boolean> fetchAndSave () {
-        return this.flashScoreService.fetch().flatMap(l-> saveData(serializeValues(l)));
+    public Mono<Boolean> fetchTodayAndSave() {
+        return this.flashScoreService.fetchToday().flatMap(l-> saveData(serializeValues(l)));
     }
 
     public String getCurrentDate() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         return Instant.now().atZone(ZoneId.of("UTC")).format(formatter);
+    }
+
+    public String getTomorrowDate(){
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        return Instant.now().plus(1, ChronoUnit.DAYS).atZone(ZoneId.of("UTC")).format(formatter);
+
     }
 
     public Mono<Boolean> saveData(byte[] buffer) {

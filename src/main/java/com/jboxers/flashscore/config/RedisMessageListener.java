@@ -9,7 +9,6 @@ import org.springframework.data.redis.connection.ReactiveKeyCommands;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.connection.ReactiveStringCommands;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
@@ -50,7 +49,7 @@ public class RedisMessageListener {
                 this.stringCommands.get(toByteBuffer(TEMP_DATE_KEY + key))
                         .flatMap(result -> this.stringCommands.set(toByteBuffer(FINAL_DATE_KEY + key), result))
                         .then(this.keyCommands.del(toByteBuffer(TEMP_DATE_KEY + key)))
-                        .then(this.runner.fetchAndSave())
+                        .then(this.runner.fetchTodayAndSave())
                         .subscribe(s -> logger.info("all saved ... " + s));
             }
         }, new PatternTopic("__key*__:expired"));

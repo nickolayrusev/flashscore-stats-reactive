@@ -62,12 +62,20 @@ public class FlashScoreService {
                 .build();
     }
 
-    private static final String URL = "http://www.flashscore.mobi/";
+    private static final String TODAY = "http://www.flashscore.mobi/";
+    private static final String TOMORROW = "http://www.flashscore.mobi/?d=1";
 
-    public Mono<List<Stat>> fetch() {
-        return fetchData(URL)
+    public Mono<List<Stat>> fetchToday(){
+        return fetch(TODAY);
+    }
+
+    public Mono<List<Stat>> fetchTomorrow(){
+        return fetch(TOMORROW);
+    }
+
+    private Mono<List<Stat>> fetch(final String url) {
+        return fetchData(url)
                 .map(this::extractGameMetadata)
-//                .doOnNext(System.out::println)
                 .doOnNext(s -> logger.info("all ids are " + s.size()))
                 .flatMapIterable(q -> q)
                 .map(t -> Tuples.of("http://d.flashscore.com/x/feed/d_hh_" + t.getT1().substring(7, 15) + "_en_1",
@@ -132,19 +140,8 @@ public class FlashScoreService {
                 .header("Pragma", "no-cache")
                 .header("Cache-control", "no-cache")
                 .exchange()
-//                .flatMap(s-> s.body(BodyExtractors.toMono(String.class)))
                 .flatMap(response-> response.bodyToMono(ByteArrayResource.class))
                 .map(s->Gzip.decompress(s.getByteArray()))
-//                .flatMap(response -> response.bodyToMono(byte[].class))
-//                .flatMapMany(s->s.body(BodyExtractors.toDataBuffers()))
-//                .map(buffer -> {
-//                    byte[] result = new byte[buffer.readableByteCount()];
-//                    buffer.read(result);
-//                    DataBufferUtils.release(buffer);
-//                    return result;
-//                })
-//                .reduce(Bytes::concat)
-//                .map(Gzip::decompress)
                 .timeout(Duration.ofSeconds(45))
                 .retry(3, (e) -> e instanceof TimeoutException)
                 .onErrorResume(e -> {
