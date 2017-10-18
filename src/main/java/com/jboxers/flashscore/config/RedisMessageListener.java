@@ -5,11 +5,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.ReactiveKeyCommands;
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
+import org.springframework.data.redis.connection.ReactiveStringCommands;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
+import static com.jboxers.flashscore.util.ByteBufferUtils.toByteBuffer;
 import static com.jboxers.flashscore.web.GameController.*;
 
 @Configuration
@@ -18,15 +22,17 @@ public class RedisMessageListener {
 
     private final AppCommandLineRunner runner;
     private final RedisConnectionFactory redisConnectionFactory;
-    private final RedisTemplate<String,String> redisTemplate;
+    private final ReactiveStringCommands stringCommands;
+    private final ReactiveKeyCommands keyCommands;
 
     @Autowired
     public RedisMessageListener(AppCommandLineRunner runner,
-                                RedisConnectionFactory redisConnectionFactory,
-                                RedisTemplate<String, String> redisTemplate) {
+                                ReactiveRedisConnectionFactory reactiveRedisConnectionFactory,
+                                RedisConnectionFactory redisConnectionFactory) {
         this.runner = runner;
         this.redisConnectionFactory = redisConnectionFactory;
-        this.redisTemplate = redisTemplate;
+        this.stringCommands = reactiveRedisConnectionFactory.getReactiveConnection().stringCommands();
+        this.keyCommands = reactiveRedisConnectionFactory.getReactiveConnection().keyCommands();
     }
 
     @Bean
@@ -38,16 +44,14 @@ public class RedisMessageListener {
             logger.info("handling " + new String(message.getBody()) + " " + new String(message.getChannel())
                     + " " + new String(pattern));
 
-
-            final String body =new String(message.getBody());
-            if(SHADOW_DATE.equals(body.split(":")[0])) {
+            final String body = new String(message.getBody());
+            if (SHADOW_DATE.equals(body.split(":")[0])) {
                 final String key = body.split(":")[1];
-
-                String s = this.redisTemplate.opsForValue().get(TEMP_DATE_KEY + key);
-                this.redisTemplate.opsForValue().set(FINAL_DATE_KEY + key , s);
-                this.redisTemplate.delete(TEMP_DATE_KEY+key);
-
-                runner.fetchAndSave().subscribe(l-> logger.info(" all saved ..." + l));
+                this.stringCommands.get(toByteBuffer(TEMP_DATE_KEY + key))
+                        .flatMap(result -> this.stringCommands.set(toByteBuffer(FINAL_DATE_KEY + key), result))
+                        .then(this.keyCommands.del(toByteBuffer(TEMP_DATE_KEY + key)))
+                        .then(this.runner.fetchAndSave())
+                        .subscribe(s -> logger.info("all saved ... " + s));
             }
         }, new PatternTopic("__key*__:expired"));
 
