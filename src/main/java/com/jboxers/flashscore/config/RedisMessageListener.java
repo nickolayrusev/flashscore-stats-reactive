@@ -12,8 +12,9 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
-import static com.jboxers.flashscore.util.ByteBufferUtils.toByteBuffer;
-import static com.jboxers.flashscore.web.GameController.*;
+import java.time.Duration;
+
+import static com.jboxers.flashscore.web.GameController.SHADOW_DATE;
 
 @Configuration
 public class RedisMessageListener {
@@ -45,11 +46,11 @@ public class RedisMessageListener {
 
             final String body = new String(message.getBody());
             if (SHADOW_DATE.equals(body.split(":")[0])) {
-                final String key = body.split(":")[1];
-                this.stringCommands.get(toByteBuffer(TEMP_DATE_KEY + key))
-                        .flatMap(result -> this.stringCommands.set(toByteBuffer(FINAL_DATE_KEY + key), result))
-                        .then(this.keyCommands.del(toByteBuffer(TEMP_DATE_KEY + key)))
-                        .then(this.runner.fetchTodayAndSave())
+                this.runner.fetchTodayAndSave()
+                        .delayElement(Duration.ofSeconds(10))
+                        .then(this.runner.fetchTomorrowAndSave())
+                        .delayElement(Duration.ofSeconds(10))
+                        .then(this.runner.fetchYesterdayAndSave())
                         .subscribe(s -> logger.info("all saved ... " + s));
             }
         }, new PatternTopic("__key*__:expired"));

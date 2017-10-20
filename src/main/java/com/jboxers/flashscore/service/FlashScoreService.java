@@ -64,6 +64,7 @@ public class FlashScoreService {
 
     private static final String TODAY = "http://www.flashscore.mobi/";
     private static final String TOMORROW = "http://www.flashscore.mobi/?d=1";
+    private static final String YESTERDAY = "http://www.flashscore.mobi/?d=-1";
 
     public Mono<List<Stat>> fetchToday(){
         return fetch(TODAY);
@@ -71,6 +72,10 @@ public class FlashScoreService {
 
     public Mono<List<Stat>> fetchTomorrow(){
         return fetch(TOMORROW);
+    }
+
+    public Mono<List<Stat>> fetchYesterday() {
+        return fetch(YESTERDAY);
     }
 
     private Mono<List<Stat>> fetch(final String url) {
@@ -204,4 +209,5 @@ public class FlashScoreService {
                     return l1;
                 });
     }
+
 }

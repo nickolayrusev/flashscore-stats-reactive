@@ -8,12 +8,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.data.redis.connection.ReactiveKeyCommands;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.connection.ReactiveStringCommands;
 import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -23,6 +25,7 @@ import java.util.List;
 import java.util.Random;
 
 import static com.jboxers.flashscore.util.ByteBufferUtils.toByteBuffer;
+import static com.jboxers.flashscore.web.GameController.FINAL_DATE_KEY;
 import static com.jboxers.flashscore.web.GameController.SHADOW_DATE_KEY;
 import static com.jboxers.flashscore.web.GameController.TEMP_DATE_KEY;
 
@@ -41,6 +44,8 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     private final ReactiveStringCommands stringCommands;
 
+    private final ReactiveKeyCommands keyCommands;
+
     private static long cacheInterval(){
         return randInt(20,25);
     }
@@ -50,14 +55,18 @@ public class AppCommandLineRunner implements CommandLineRunner {
         this.flashScoreService = flashScoreService;
         this.objectMapper = objectMapper;
         this.stringCommands = factory.getReactiveConnection().stringCommands();
+        this.keyCommands = factory.getReactiveConnection().keyCommands();
     }
 
     @Override
     public void run(String... strings) throws Exception {
-//        fetchTodayAndSave().delayElement(Duration.ofMillis(499)).subscribe();
+        fetchTodayAndSave()
+                .delayElement(Duration.ofSeconds(10))
+                .then(fetchTomorrowAndSave())
+                .subscribe();
     }
 
-    public String serializeValuesAsString(List<Stat> stats) {
+    private String serializeValuesAsString(List<Stat> stats) {
         try {
             return this.objectMapper.writeValueAsString(stats);
         } catch (JsonProcessingException e) {
@@ -67,30 +76,73 @@ public class AppCommandLineRunner implements CommandLineRunner {
     }
 
 
-    public byte[] serializeValues(List<Stat> stats) {
+    private byte[] serializeValues(List<Stat> stats) {
         return serializeValuesAsString(stats).getBytes();
     }
 
     public Mono<Boolean> fetchTodayAndSave() {
-        return this.flashScoreService.fetchToday().flatMap(l-> saveData(serializeValues(l)));
+        return this.flashScoreService.fetchToday().flatMap(l-> saveTodayData(serializeValues(l)));
     }
+
+    public Mono<Boolean> fetchTomorrowAndSave() {
+        final String currentDate = getTomorrowDate();
+        final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + currentDate);
+        return this.keyCommands.exists(finalDateKey).flatMap(r->{
+            if(!r){
+                return this.flashScoreService.fetchTomorrow().flatMap(l-> saveTomorrowData(serializeValues(l)));
+            }else{
+                return Mono.just(false);
+            }
+        });
+    }
+
+    public Mono<Boolean> fetchYesterdayAndSave() {
+        final String currentDate = getYesterdayDate();
+        final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + currentDate);
+        return this.keyCommands.exists(finalDateKey).flatMap(r->{
+            if(!r){
+                return this.flashScoreService.fetchYesterday().flatMap(l-> saveYesterdayData(serializeValues(l)));
+            }else{
+                return Mono.just(false);
+            }
+        });
+    }
+
 
     public String getCurrentDate() {
         return Instant.now().atZone(ZoneId.of("UTC")).format(formatter);
     }
 
-    public String getTomorrowDate(){
+    public String getTomorrowDate() {
         return Instant.now().plus(1, ChronoUnit.DAYS).atZone(ZoneId.of("UTC")).format(formatter);
+    }
+
+    public String getYesterdayDate() {
+        return Instant.now().minus(1, ChronoUnit.DAYS).atZone(ZoneId.of("UTC")).format(formatter);
+    }
+
+    private Mono<Boolean> saveYesterdayData(byte[] buffer) {
+        final String currentDate = getYesterdayDate();
+        final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + currentDate);
+        logger.info("saving data ... for ... yesterday ... " + currentDate);
+        return this.stringCommands.set(finalDateKey, toByteBuffer(buffer));
 
     }
 
-    public Mono<Boolean> saveData(byte[] buffer) {
+    private Mono<Boolean> saveTodayData(byte[] buffer) {
         final String currentDate = getCurrentDate();
-        logger.info("saving data ... for ... " + currentDate);
+        logger.info("saving data ... for ... today ... " + currentDate);
         return this.stringCommands.set(toByteBuffer(TEMP_DATE_KEY + currentDate), toByteBuffer(buffer) )
                 .then(this.stringCommands.setEX(toByteBuffer(SHADOW_DATE_KEY + currentDate),
                         toByteBuffer(buffer),
                         Expiration.from(Duration.ofMinutes(cacheInterval()))));
+    }
+
+    private Mono<Boolean> saveTomorrowData(byte[] buffer) {
+        final String currentDate = getTomorrowDate();
+        final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + currentDate);
+        logger.info("saving data ... for ... tomorrow ... " + currentDate);
+        return this.stringCommands.set(finalDateKey, toByteBuffer(buffer));
     }
 
     /**
