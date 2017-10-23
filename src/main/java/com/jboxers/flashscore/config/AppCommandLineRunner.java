@@ -46,8 +46,8 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     private final ReactiveKeyCommands keyCommands;
 
-    private static long cacheInterval(){
-        return randInt(20,25);
+    private static long cacheInterval() {
+        return randInt(20, 25);
     }
 
     @Autowired
@@ -81,16 +81,16 @@ public class AppCommandLineRunner implements CommandLineRunner {
     }
 
     public Mono<Boolean> fetchTodayAndSave() {
-        return this.flashScoreService.fetchToday().flatMap(l-> saveTodayData(serializeValues(l)));
+        return this.flashScoreService.fetchToday().flatMap(l -> saveTodayData(serializeValues(l)));
     }
 
     public Mono<Boolean> fetchTomorrowAndSave() {
         final String currentDate = getTomorrowDate();
-        final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + currentDate);
-        return this.keyCommands.exists(finalDateKey).flatMap(r->{
-            if(!r){
-                return this.flashScoreService.fetchTomorrow().flatMap(l-> saveTomorrowData(serializeValues(l)));
-            }else{
+        final ByteBuffer finalDateKey = toByteBuffer(TEMP_DATE_KEY + currentDate);
+        return this.keyCommands.exists(finalDateKey).flatMap(r -> {
+            if (!r) {
+                return this.flashScoreService.fetchTomorrow().flatMap(l -> saveTomorrowData(serializeValues(l)));
+            } else {
                 return Mono.just(false);
             }
         });
@@ -99,10 +99,10 @@ public class AppCommandLineRunner implements CommandLineRunner {
     public Mono<Boolean> fetchYesterdayAndSave() {
         final String currentDate = getYesterdayDate();
         final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + currentDate);
-        return this.keyCommands.exists(finalDateKey).flatMap(r->{
-            if(!r){
-                return this.flashScoreService.fetchYesterday().flatMap(l-> saveYesterdayData(serializeValues(l)));
-            }else{
+        return this.keyCommands.exists(finalDateKey).flatMap(r -> {
+            if (!r) {
+                return this.flashScoreService.fetchYesterday().flatMap(l -> saveYesterdayData(serializeValues(l)));
+            } else {
                 return Mono.just(false);
             }
         });
@@ -131,16 +131,19 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     private Mono<Boolean> saveTodayData(byte[] buffer) {
         final String currentDate = getCurrentDate();
+        final String yesterdayDate = getYesterdayDate();
         logger.info("saving data ... for ... today ... " + currentDate);
-        return this.stringCommands.set(toByteBuffer(TEMP_DATE_KEY + currentDate), toByteBuffer(buffer) )
-                .then(this.stringCommands.setEX(toByteBuffer(SHADOW_DATE_KEY + currentDate),
-                        toByteBuffer(buffer),
-                        Expiration.from(Duration.ofMinutes(cacheInterval()))));
+
+        return this.keyCommands.del(toByteBuffer(TEMP_DATE_KEY + yesterdayDate))
+                .then(this.stringCommands.set(toByteBuffer(TEMP_DATE_KEY + currentDate), toByteBuffer(buffer))
+                        .then(this.stringCommands.setEX(toByteBuffer(SHADOW_DATE_KEY + currentDate),
+                                toByteBuffer(buffer),
+                                Expiration.from(Duration.ofMinutes(cacheInterval())))));
     }
 
     private Mono<Boolean> saveTomorrowData(byte[] buffer) {
         final String currentDate = getTomorrowDate();
-        final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + currentDate);
+        final ByteBuffer finalDateKey = toByteBuffer(TEMP_DATE_KEY + currentDate);
         logger.info("saving data ... for ... tomorrow ... " + currentDate);
         return this.stringCommands.set(finalDateKey, toByteBuffer(buffer));
     }

@@ -22,17 +22,12 @@ public class RedisMessageListener {
 
     private final AppCommandLineRunner runner;
     private final RedisConnectionFactory redisConnectionFactory;
-    private final ReactiveStringCommands stringCommands;
-    private final ReactiveKeyCommands keyCommands;
 
     @Autowired
     public RedisMessageListener(AppCommandLineRunner runner,
-                                ReactiveRedisConnectionFactory reactiveRedisConnectionFactory,
                                 RedisConnectionFactory redisConnectionFactory) {
         this.runner = runner;
         this.redisConnectionFactory = redisConnectionFactory;
-        this.stringCommands = reactiveRedisConnectionFactory.getReactiveConnection().stringCommands();
-        this.keyCommands = reactiveRedisConnectionFactory.getReactiveConnection().keyCommands();
     }
 
     @Bean
