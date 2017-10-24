@@ -10,9 +10,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 public class FlashscoreStatsReactiveApplication {
-
-	@Autowired RedisConnectionFactory factory;
-
 	public static void main(String[] args) {
 		SpringApplication.run(FlashscoreStatsReactiveApplication.class, args);
 	}
