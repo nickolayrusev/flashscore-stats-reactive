@@ -34,4 +34,9 @@ public class FlashscoreStatsReactiveApplicationTests {
 	public void testFlashScoreServiceTomorrow(){
 		flashScoreService.fetchTomorrow().block().forEach(System.out::println);
 	}
+
+	@Test
+	public void testFlashScoreServiceYesterday(){
+		flashScoreService.fetchYesterday().block().forEach(System.out::println);
+	}
 }

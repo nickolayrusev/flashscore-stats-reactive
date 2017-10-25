@@ -7,6 +7,8 @@ import reactor.util.function.Tuples;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -51,5 +53,10 @@ public class JSoupTest {
     public void testRounding(){
         float f = (float)4 / 9 * 100;
         System.out.println(Math.round(f));
+    }
+
+    @Test
+    public void testInstant(){
+        System.out.println(Instant.now().minus(1, ChronoUnit.DAYS));
     }
 }

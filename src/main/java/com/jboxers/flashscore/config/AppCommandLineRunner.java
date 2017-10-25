@@ -97,8 +97,8 @@ public class AppCommandLineRunner implements CommandLineRunner {
     }
 
     public Mono<Boolean> fetchYesterdayAndSave() {
-        final String currentDate = getYesterdayDate();
-        final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + currentDate);
+        final String yesterdayDate = getYesterdayDate();
+        final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + yesterdayDate);
         return this.keyCommands.exists(finalDateKey).flatMap(r -> {
             if (!r) {
                 return this.flashScoreService.fetchYesterday().flatMap(l -> saveYesterdayData(serializeValues(l)));
@@ -143,9 +143,9 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     private Mono<Boolean> saveTomorrowData(byte[] buffer) {
         final String currentDate = getTomorrowDate();
-        final ByteBuffer finalDateKey = toByteBuffer(TEMP_DATE_KEY + currentDate);
+        final ByteBuffer tempDateKey = toByteBuffer(TEMP_DATE_KEY + currentDate);
         logger.info("saving data ... for ... tomorrow ... " + currentDate);
-        return this.stringCommands.set(finalDateKey, toByteBuffer(buffer));
+        return this.stringCommands.set(tempDateKey, toByteBuffer(buffer));
     }
 
     /**
