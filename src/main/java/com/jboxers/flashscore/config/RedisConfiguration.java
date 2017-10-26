@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -26,6 +27,7 @@ public class RedisConfiguration {
     }
 
     @Bean
+    @Primary
     public ReactiveRedisConnectionFactory reactiveRedisConnectionFactory() {
         return new LettuceConnectionFactory("127.0.0.1",6379);
     }
