@@ -8,7 +8,6 @@ import org.springframework.data.redis.repository.configuration.EnableRedisReposi
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableScheduling
 public class FlashscoreStatsReactiveApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(FlashscoreStatsReactiveApplication.class, args);

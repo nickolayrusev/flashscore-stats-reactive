@@ -62,6 +62,9 @@ public class FlashScoreService {
                 .build();
     }
 
+    //standing
+    //http://d.flashscore.com/x/feed/ss_1_YqNsgljq_dbCAaU6t_table_overall?hp1=CIEe04GT&hp2=tItR6sEf&e=MV81QmDf
+    // http://d.flashscore.com/x/feed/ss_1_YqNsgljq_dbCAaU6t_table_overall - it will work
     private static final String TODAY = "http://www.flashscore.mobi/";
     private static final String TOMORROW = "http://www.flashscore.mobi/?d=1";
     private static final String YESTERDAY = "http://www.flashscore.mobi/?d=-1";
