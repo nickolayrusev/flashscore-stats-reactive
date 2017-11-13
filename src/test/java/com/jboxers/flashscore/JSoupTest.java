@@ -1,7 +1,11 @@
 package com.jboxers.flashscore;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
 import org.junit.Test;
 import reactor.util.function.Tuples;
 
@@ -14,6 +18,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static com.jboxers.flashscore.service.FlashScoreService.splitBySeparator;
@@ -40,6 +46,22 @@ public class JSoupTest {
                             .orElse("");
                     return Tuples.of("","");
                 }).forEach(System.out::println);
+    }
+
+    @Test
+    public void testStandings() throws IOException {
+        File file = new File("/Users/nikolayrusev/Repository/flashscore-stats-reactive/standings.html");
+        String result = Jsoup.parse(file, "utf-8")
+                .select("script")
+                .stream()
+                .map(Node::outerHtml)
+                .filter(s->s.contains("stats2Config"))
+                .findFirst()
+                .orElse("{}");
+        JsonNode jsonNode = new ObjectMapper().readTree(result.substring(result.indexOf("{"), result.lastIndexOf("}")+1));
+        System.out.println("result is " + result);
+        System.out.println("tournament " + jsonNode.get("tournament") );
+        System.out.println("tournament stage " + jsonNode.get("tournamentStage") );
     }
 
     private Stream<String> stream  = Stream.of("a","b","c","-","d","e","f","-","g");
