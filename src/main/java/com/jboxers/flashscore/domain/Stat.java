@@ -18,6 +18,8 @@ public class Stat {
     private String status;
     private boolean isLive;
     private String league;
+    private String leagueId;
+    private String leagueStage;
     private String score;
     private List<Game> headToHeadGames;
     private List<Game> homeTeamGames;
