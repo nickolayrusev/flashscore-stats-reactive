@@ -65,6 +65,7 @@ public class FlashScoreService {
     //standing
     //http://d.flashscore.com/x/feed/ss_1_YqNsgljq_dbCAaU6t_table_overall?hp1=CIEe04GT&hp2=tItR6sEf&e=MV81QmDf
     // http://d.flashscore.com/x/feed/ss_1_YqNsgljq_dbCAaU6t_table_overall - it will work
+    //                                     tournamentId_tournamentStage
     private static final String TODAY = "http://www.flashscore.mobi/";
     private static final String TOMORROW = "http://www.flashscore.mobi/?d=1";
     private static final String YESTERDAY = "http://www.flashscore.mobi/?d=-1";
@@ -86,7 +87,7 @@ public class FlashScoreService {
                 .map(this::extractGameMetadata)
                 .doOnNext(s -> logger.info("all ids are " + s.size()))
                 .flatMapIterable(q -> q)
-                .map(t -> Tuples.of("http://d.flashscore.com/x/feed/d_hh_" + t.getT1().substring(7, 15) + "_en_1",
+                .map(t -> Tuples.of("http://d.flashscore.com/x/feed/d_hh_" + t.getT1() + "_en_1",
                         t.getT2(),
                         t.getT3(),
                         t.getT4(),
@@ -130,7 +131,7 @@ public class FlashScoreService {
                                 .collect(Collectors.joining(" "))
                             ).collect(toList());
 
-                    return Tuples.of(e.attr("href"), //url
+                    return Tuples.of(e.attr("href").substring(7,15), //url
                             league, //league
                             e.className(), //state
                             e.text(),//score

@@ -23,6 +23,7 @@ public class Stat {
     private List<Game> homeTeamGames;
     private List<Game> awayTeamGames;
 
+
     @JsonGetter
     public List<Game> getHeadToHeadGames(){
         return headToHeadGames.stream().limit(LIMIT).collect(Collectors.toList());
