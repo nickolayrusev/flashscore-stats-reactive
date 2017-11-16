@@ -52,4 +52,16 @@ public class RedisMessageListener {
 
         return listenerContainer;
     }
+
+    @Bean
+    public RedisMessageListenerContainer standingExpirationListener() {
+        RedisMessageListenerContainer listenerContainer = new RedisMessageListenerContainer();
+        listenerContainer.setConnectionFactory(redisConnectionFactory);
+
+        listenerContainer.addMessageListener((message, pattern) -> {
+            System.out.println("received " + new String(message.getBody()));
+        }, new PatternTopic("chat"));
+
+        return listenerContainer;
+    }
 }

@@ -60,10 +60,10 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     @Override
     public void run(String... strings) throws Exception {
-        fetchTodayAndSave()
-                .delayElement(Duration.ofSeconds(10))
-                .then(fetchTomorrowAndSave())
-                .subscribe();
+//        fetchTodayAndSave()
+//                .delayElement(Duration.ofSeconds(10))
+//                .then(fetchTomorrowAndSave())
+//                .subscribe();
     }
 
     private String serializeValuesAsString(List<Stat> stats) {

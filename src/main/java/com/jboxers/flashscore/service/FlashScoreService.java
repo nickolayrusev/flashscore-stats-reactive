@@ -1,7 +1,8 @@
 package com.jboxers.flashscore.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import com.google.common.primitives.Bytes;
 import com.jboxers.flashscore.domain.Game;
 import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.util.Gzip;
@@ -12,23 +13,20 @@ import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
 import reactor.ipc.netty.options.ClientOptions;
+import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple5;
 import reactor.util.function.Tuples;
 
-import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -53,10 +51,10 @@ import static java.util.stream.Collectors.toList;
 public class FlashScoreService {
 
     private final WebClient client;
-
     private final static Logger logger = LoggerFactory.getLogger(FlashScoreService.class);
 
-    public FlashScoreService() {
+    @Autowired
+    public FlashScoreService(StringRedisTemplate stringRedisTemplate) {
         this.client = WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(ClientOptions.Builder::disablePool))
                 .build();
@@ -70,11 +68,13 @@ public class FlashScoreService {
     private static final String TOMORROW = "http://www.flashscore.mobi/?d=1";
     private static final String YESTERDAY = "http://www.flashscore.mobi/?d=-1";
 
-    public Mono<List<Stat>> fetchToday(){
+//    https://www.flashscore.com/match/hhno9nni/#match-summary
+
+    public Mono<List<Stat>> fetchToday() {
         return fetch(TODAY);
     }
 
-    public Mono<List<Stat>> fetchTomorrow(){
+    public Mono<List<Stat>> fetchTomorrow() {
         return fetch(TOMORROW);
     }
 
@@ -87,13 +87,21 @@ public class FlashScoreService {
                 .map(this::extractGameMetadata)
                 .doOnNext(s -> logger.info("all ids are " + s.size()))
                 .flatMapIterable(q -> q)
-                .map(t -> Tuples.of("http://d.flashscore.com/x/feed/d_hh_" + t.getT1() + "_en_1",
-                        t.getT2(),
-                        t.getT3(),
-                        t.getT4(),
-                        t.getT5()))
-                .flatMap(t -> fetchData(t.getT1()).delayElement(Duration.ofMillis(300)).map(s -> Tuples.of(s, t.getT2(), t.getT3(), t.getT4(), t.getT5())))
-                .map(t -> extractGames(t.getT1(), t.getT2(), t.getT3(), t.getT4(), t.getT5()))
+                .map(t -> {
+                    return Tuples.of("http://d.flashscore.com/x/feed/d_hh_" + t.getT1() + "_en_1",
+                            t.getT2(),
+                            t.getT3(),
+                            t.getT4(),
+                            t.getT5(),
+                            "https://www.flashscore.com/match/" + t.getT1() +"/#match-summary");
+                })
+                .flatMap(t ->
+                        fetchData(t.getT1())
+                                .delayElement(Duration.ofMillis(300))
+                                .map(s -> Tuples.of(s, t.getT2(), t.getT3(), t.getT4(), t.getT5(), t.getT6()))
+                                .flatMap(q->fetchData(t.getT6()).map(d-> Tuples.of(q.getT1(),q.getT2(), q.getT3(), q.getT4(), q.getT5(),d)))
+                )
+                .map(t -> extractGames(t.getT1(), t.getT2(), t.getT3(), t.getT4(), t.getT5(), t.getT6()))
                 .collectList();
     }
 
@@ -123,15 +131,15 @@ public class FlashScoreService {
                             .stream()
                             .filter(s -> s.siblingIndex() < e.siblingIndex())
                             .collect(splitBySeparator(q -> q.outerHtml().equals("<br>")))
-                            .stream().map(s->s.stream()
-                                .filter(q->q instanceof TextNode)
-                                .map(Node::outerHtml)
-                                .map(String::trim)
-                                .filter(c -> !c.isEmpty())
-                                .collect(Collectors.joining(" "))
+                            .stream().map(s -> s.stream()
+                                    .filter(q -> q instanceof TextNode)
+                                    .map(Node::outerHtml)
+                                    .map(String::trim)
+                                    .filter(c -> !c.isEmpty())
+                                    .collect(Collectors.joining(" "))
                             ).collect(toList());
 
-                    return Tuples.of(e.attr("href").substring(7,15), //url
+                    return Tuples.of(e.attr("href").substring(7, 15), //url
                             league, //league
                             e.className(), //state
                             e.text(),//score
@@ -149,8 +157,8 @@ public class FlashScoreService {
                 .header("Pragma", "no-cache")
                 .header("Cache-control", "no-cache")
                 .exchange()
-                .flatMap(response-> response.bodyToMono(ByteArrayResource.class))
-                .map(s->Gzip.decompress(s.getByteArray()))
+                .flatMap(response -> response.bodyToMono(ByteArrayResource.class))
+                .map(s -> Gzip.decompress(s.getByteArray()))
                 .timeout(Duration.ofSeconds(45))
                 .retry(3, (e) -> e instanceof TimeoutException)
                 .onErrorResume(e -> {
@@ -161,10 +169,11 @@ public class FlashScoreService {
     }
 
 
-    private Stat extractGames(String data, String champ, String status, String gameScore, String id) {
+    private Stat extractGames(String data, String champ, String status, String gameScore, String id, String standingData) {
         List<Game> headToHeadGames = parseGames(data, ".h2h_mutual");
         List<Game> homeGames = parseGames(data, ".h2h_home");
         List<Game> awayGames = parseGames(data, ".h2h_away");
+        Tuple2<String, String> tournamentIdAndStage = extractTournamentIdAndStage(standingData);
         return Stat.builder()
                 .headToHeadGames(headToHeadGames)
                 .homeTeamGames(homeGames)
@@ -173,7 +182,30 @@ public class FlashScoreService {
                 .status(status)
                 .score(gameScore)
                 .league(champ)
+                .leagueId(tournamentIdAndStage.getT1())
+                .leagueStage(tournamentIdAndStage.getT2())
                 .build();
+    }
+
+    private Tuple2<String,String> extractTournamentIdAndStage(final String data) {
+        String result = Jsoup.parse(data, "utf-8")
+                .select("script")
+                .stream()
+                .map(Node::outerHtml)
+                .filter(s->s.contains("stats2Config"))
+                .findFirst()
+                .orElse("{}");
+        try {
+            JsonNode jsonNode = new ObjectMapper().readTree(result.substring(result.indexOf("{"), result.lastIndexOf("}")+1));
+            if(jsonNode.hasNonNull("tournament") && jsonNode.hasNonNull("tournamentStage")) {
+                return Tuples.of(
+                        jsonNode.get("tournament").asText(),
+                        jsonNode.get("tournamentStage").asText());
+            }
+        } catch (IOException e) {
+            return Tuples.of("","");
+        }
+        return Tuples.of("","");
     }
 
     private List<Game> parseGames(final String data, String className) {

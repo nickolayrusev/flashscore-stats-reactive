@@ -1,5 +1,6 @@
 package com.jboxers.flashscore;
 
+import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.service.FlashScoreService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -11,6 +12,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -27,7 +29,9 @@ public class FlashscoreStatsReactiveApplicationTests {
 
 	@Test
 	public void testFlashScoreService(){
-		flashScoreService.fetchToday().block().forEach(System.out::println);
+		List<Stat> block = flashScoreService.fetchToday().block();
+		System.out.println(block.size());
+		block.forEach(System.out::println);
 	}
 
 	@Test
