@@ -5,10 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.ReactiveKeyCommands;
-import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
-import org.springframework.data.redis.connection.ReactiveStringCommands;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
@@ -25,7 +23,7 @@ public class RedisMessageListener {
 
     @Autowired
     public RedisMessageListener(AppCommandLineRunner runner,
-                                RedisConnectionFactory redisConnectionFactory) {
+                                RedisConnectionFactory redisConnectionFactory ) {
         this.runner = runner;
         this.redisConnectionFactory = redisConnectionFactory;
     }
@@ -59,8 +57,12 @@ public class RedisMessageListener {
         listenerContainer.setConnectionFactory(redisConnectionFactory);
 
         listenerContainer.addMessageListener((message, pattern) -> {
-            System.out.println("received " + new String(message.getBody()));
-        }, new PatternTopic("chat"));
+            String m = new String(message.getBody());
+            System.out.println("received " + m);
+
+            if(m.equals("rpush"))
+                this.runner.saveStanding();
+        }, new PatternTopic("__keyspace@0__:chat"));
 
         return listenerContainer;
     }

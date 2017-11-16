@@ -174,6 +174,7 @@ public class FlashScoreService {
         List<Game> homeGames = parseGames(data, ".h2h_home");
         List<Game> awayGames = parseGames(data, ".h2h_away");
         Tuple2<String, String> tournamentIdAndStage = extractTournamentIdAndStage(standingData);
+
         return Stat.builder()
                 .headToHeadGames(headToHeadGames)
                 .homeTeamGames(homeGames)

@@ -4,15 +4,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.service.FlashScoreService;
+import com.jboxers.flashscore.util.ByteBufferUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.data.redis.connection.ReactiveKeyCommands;
+import org.springframework.data.redis.connection.ReactiveListCommands;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 import org.springframework.data.redis.connection.ReactiveStringCommands;
 import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
@@ -28,6 +31,7 @@ import static com.jboxers.flashscore.util.ByteBufferUtils.toByteBuffer;
 import static com.jboxers.flashscore.web.GameController.FINAL_DATE_KEY;
 import static com.jboxers.flashscore.web.GameController.SHADOW_DATE_KEY;
 import static com.jboxers.flashscore.web.GameController.TEMP_DATE_KEY;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Created by nikolayrusev on 7/12/17.
@@ -44,6 +48,8 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     private final ReactiveStringCommands stringCommands;
 
+    private final ReactiveListCommands listCommands;
+
     private final ReactiveKeyCommands keyCommands;
 
     private static long cacheInterval() {
@@ -56,14 +62,15 @@ public class AppCommandLineRunner implements CommandLineRunner {
         this.objectMapper = objectMapper;
         this.stringCommands = factory.getReactiveConnection().stringCommands();
         this.keyCommands = factory.getReactiveConnection().keyCommands();
+        this.listCommands = factory.getReactiveConnection().listCommands();
     }
 
     @Override
     public void run(String... strings) throws Exception {
-//        fetchTodayAndSave()
-//                .delayElement(Duration.ofSeconds(10))
-//                .then(fetchTomorrowAndSave())
-//                .subscribe();
+        fetchTodayAndSave()
+                .delayElement(Duration.ofSeconds(10))
+                .then(fetchTomorrowAndSave())
+                .subscribe();
     }
 
     private String serializeValuesAsString(List<Stat> stats) {
@@ -81,7 +88,12 @@ public class AppCommandLineRunner implements CommandLineRunner {
     }
 
     public Mono<Boolean> fetchTodayAndSave() {
-        return this.flashScoreService.fetchToday().flatMap(l -> saveTodayData(serializeValues(l)));
+        return this.flashScoreService.fetchToday()
+                .flatMap(l -> {
+                    //TODO: ugly code, move it in the reactive pipeline
+                    this.listCommands.rPush(toByteBuffer("chat"), l.stream().map(s -> toByteBuffer(s.getLeagueId())).collect(toList())).subscribe();
+                    return saveTodayData(serializeValues(l));
+                });
     }
 
     public Mono<Boolean> fetchTomorrowAndSave() {
@@ -146,6 +158,19 @@ public class AppCommandLineRunner implements CommandLineRunner {
         final ByteBuffer tempDateKey = toByteBuffer(TEMP_DATE_KEY + currentDate);
         logger.info("saving data ... for ... tomorrow ... " + currentDate);
         return this.stringCommands.set(tempDateKey, toByteBuffer(buffer));
+    }
+
+    public void saveStanding() {
+        this.listCommands.lLen(toByteBuffer("chat"))
+                .doOnNext(v->System.out.println("length is " + v))
+                .map(q -> Flux.range(0, q.intValue()))
+                .flatMapMany(q -> q)
+                .flatMap(r -> {
+                    return this.listCommands.rPop(toByteBuffer("chat"));
+                }).subscribe(q -> {
+                    System.out.println("should fetch id" + ByteBufferUtils.toString(q));
+        });
+
     }
 
     /**
