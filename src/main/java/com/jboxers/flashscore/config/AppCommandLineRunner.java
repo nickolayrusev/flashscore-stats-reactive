@@ -17,6 +17,8 @@ import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -89,11 +91,12 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     public Mono<Boolean> fetchTodayAndSave() {
         return this.flashScoreService.fetchToday()
-                .flatMap(l -> {
-                    //TODO: ugly code, move it in the reactive pipeline
-                    this.listCommands.rPush(toByteBuffer("chat"), l.stream().map(s -> toByteBuffer(s.getLeagueId())).collect(toList())).subscribe();
-                    return saveTodayData(serializeValues(l));
-                });
+                .map(l -> {
+                    List<ByteBuffer> collect = l.stream().map(s ->  toByteBuffer(s.getLeagueId() + ":" + s.getLeagueStage())).collect(toList());
+                    return Tuples.of(l, collect);
+                })
+                .map(l-> Tuples.of(l.getT1(), this.listCommands.rPush(toByteBuffer("chat"), l.getT2())))
+                .flatMap(q -> q.getT2().onErrorResume(e-> Mono.just(0L)).then(saveTodayData(serializeValues(q.getT1()))));
     }
 
     public Mono<Boolean> fetchTomorrowAndSave() {
@@ -162,13 +165,13 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     public void saveStanding() {
         this.listCommands.lLen(toByteBuffer("chat"))
-                .doOnNext(v->System.out.println("length is " + v))
+                .doOnNext(v -> System.out.println("length is " + v))
                 .map(q -> Flux.range(0, q.intValue()))
                 .flatMapMany(q -> q)
                 .flatMap(r -> {
                     return this.listCommands.rPop(toByteBuffer("chat"));
                 }).subscribe(q -> {
-                    System.out.println("should fetch id" + ByteBufferUtils.toString(q));
+            System.out.println("should fetch id" + ByteBufferUtils.toString(q));
         });
 
     }
