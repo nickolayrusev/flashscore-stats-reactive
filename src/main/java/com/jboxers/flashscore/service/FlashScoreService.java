@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.jboxers.flashscore.domain.Game;
+import com.jboxers.flashscore.domain.Standing;
 import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.util.Gzip;
 import org.jsoup.Jsoup;
@@ -42,6 +43,7 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 
+import static java.util.stream.Collectors.averagingDouble;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -80,6 +82,29 @@ public class FlashScoreService {
 
     public Mono<List<Stat>> fetchYesterday() {
         return fetch(YESTERDAY);
+    }
+
+    public Mono<List<Standing>> fetchStanding(String league, String stage){
+        String url = "http://d.flashscore.com/x/feed/ss_1_" + league + "_" + stage + "_table_overall";
+        return fetchData(url).map(data -> {
+            return Jsoup.parse(data, "utf-8")
+                    .select(".stats-table-container tbody > tr")
+                    .stream()
+                    .map(s->{
+                        Elements children = s.children();
+                        return Standing.builder()
+                                    .position(Integer.valueOf(children.get(0).text().replace(".","")))
+                                    .team(children.get(1).text())
+                                    .matchesPlayed(Integer.valueOf(children.get(2).text()))
+                                    .wins(Integer.valueOf(children.get(3).text()))
+                                    .draws(Integer.valueOf(children.get(4).text()))
+                                    .loses(Integer.valueOf(children.get(5).text()))
+                                    .goalDifference(children.get(6).text())
+                                    .points(Integer.valueOf(children.get(7).text()))
+                                    .build();
+                    })
+                    .collect(toList());
+        });
     }
 
     private Mono<List<Stat>> fetch(final String url) {

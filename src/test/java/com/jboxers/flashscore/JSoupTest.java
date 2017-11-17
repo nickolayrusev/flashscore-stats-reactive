@@ -63,6 +63,23 @@ public class JSoupTest {
         System.out.println("tournament stage " + jsonNode.get("tournamentStage") );
     }
 
+    @Test
+    public void testStand() throws IOException {
+        File file = new File("/Users/nikolayrusev/Repository/flashscore-stats-reactive/stand.html");
+        Jsoup.parse(file, "utf-8")
+                .select(".stats-table-container tbody > tr")
+                .forEach(e->{
+                    System.out.println("pos " + e.children().get(0).text());
+                    System.out.println("team " + e.children().get(1).text());
+                    System.out.println("matches played " + e.children().get(2).text());
+                    System.out.println("wins " + e.children().get(3).text());
+                    System.out.println("draws " + e.children().get(4).text());
+                    System.out.println("loses " + e.children().get(5).text());
+                    System.out.println("difference" + e.children().get(6).text());
+                    System.out.println("points "+ e.children().get(7).text());
+                });
+
+    }
     private Stream<String> stream  = Stream.of("a","b","c","-","d","e","f","-","g");
 
     @Test

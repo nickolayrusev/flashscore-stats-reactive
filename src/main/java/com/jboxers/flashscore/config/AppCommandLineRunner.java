@@ -75,7 +75,7 @@ public class AppCommandLineRunner implements CommandLineRunner {
                 .subscribe();
     }
 
-    private String serializeValuesAsString(List<Stat> stats) {
+    private String serializeValuesAsString(List<?> stats) {
         try {
             return this.objectMapper.writeValueAsString(stats);
         } catch (JsonProcessingException e) {
@@ -92,11 +92,17 @@ public class AppCommandLineRunner implements CommandLineRunner {
     public Mono<Boolean> fetchTodayAndSave() {
         return this.flashScoreService.fetchToday()
                 .map(l -> {
-                    List<ByteBuffer> collect = l.stream().map(s ->  toByteBuffer(s.getLeagueId() + ":" + s.getLeagueStage())).collect(toList());
+                    List<ByteBuffer> collect =
+                            l.stream()
+                                    .filter(q-> !q.getLeagueId().isEmpty() && !q.getLeagueStage().isEmpty())
+                                    .map(s-> "standing" + ":" + s.getLeagueId() + ":" + s.getLeagueStage())
+                                    .distinct()
+                                    .map(s->ByteBufferUtils.toByteBuffer(s.getBytes()))
+                                    .collect(toList());
                     return Tuples.of(l, collect);
                 })
-                .map(l-> Tuples.of(l.getT1(), this.listCommands.rPush(toByteBuffer("chat"), l.getT2())))
-                .flatMap(q -> q.getT2().onErrorResume(e-> Mono.just(0L)).then(saveTodayData(serializeValues(q.getT1()))));
+                .map(l -> Tuples.of(l.getT1(), this.listCommands.rPush(toByteBuffer("chat"), l.getT2())))
+                .flatMap(q -> q.getT2().onErrorResume(e -> Mono.just(0L)).then(saveTodayData(serializeValues(q.getT1()))));
     }
 
     public Mono<Boolean> fetchTomorrowAndSave() {
@@ -168,11 +174,23 @@ public class AppCommandLineRunner implements CommandLineRunner {
                 .doOnNext(v -> System.out.println("length is " + v))
                 .map(q -> Flux.range(0, q.intValue()))
                 .flatMapMany(q -> q)
-                .flatMap(r -> {
-                    return this.listCommands.rPop(toByteBuffer("chat"));
-                }).subscribe(q -> {
-            System.out.println("should fetch id" + ByteBufferUtils.toString(q));
-        });
+                .flatMap(r -> this.listCommands.rPop(toByteBuffer("chat")))
+                .map(ByteBufferUtils::toString)
+                .flatMap(key->{
+                    System.out.println(" key " + key);
+                    final String leagueId = key.split(":")[1];
+                    final String stage = key.split(":")[2];
+                    return this.keyCommands.exists(toByteBuffer(key)).flatMap(e->{
+                        return !e ?
+                                this.flashScoreService
+                                        .fetchStanding(leagueId, stage)
+                                        .flatMap(l->this.stringCommands.set(toByteBuffer(key), toByteBuffer(serializeValuesAsString(l))))
+                                : Mono.just(false);
+                    });
+                })
+                .subscribe(q -> {
+                    System.out.println(" all saved " + q);
+                });
 
     }
 
