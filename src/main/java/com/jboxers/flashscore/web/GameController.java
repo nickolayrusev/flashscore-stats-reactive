@@ -41,7 +41,7 @@ public class GameController {
     private final ReactiveKeyCommands keyCommands;
 
     @Autowired
-    public GameController(ReactiveRedisConnectionFactory factory, AppCommandLineRunner runner) {
+    public GameController(ReactiveRedisConnectionFactory factory) {
         ReactiveRedisConnection connection = factory.getReactiveConnection();
         this.stringCommands = connection.stringCommands();
         this.keyCommands = connection.keyCommands();
