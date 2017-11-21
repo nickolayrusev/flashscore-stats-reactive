@@ -102,7 +102,7 @@ public class AppCommandLineRunner implements CommandLineRunner {
                     return Tuples.of(l, collect);
                 })
                 .map(l -> Tuples.of(l.getT1(), this.listCommands.rPush(toByteBuffer("chat"), l.getT2())))
-                .flatMap(q -> q.getT2().onErrorResume(e -> Mono.just(0L)).then(saveTodayData(serializeValues(q.getT1()))));
+                .flatMap(q -> q.getT2().then(saveTodayData(serializeValues(q.getT1()))));
     }
 
     public Mono<Boolean> fetchTomorrowAndSave() {
@@ -144,8 +144,8 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     private Mono<Boolean> saveYesterdayData(byte[] buffer) {
         final String currentDate = getYesterdayDate();
-        final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + currentDate);
         logger.info("saving data ... for ... yesterday ... " + currentDate);
+        final ByteBuffer finalDateKey = toByteBuffer(FINAL_DATE_KEY + currentDate);
         return this.stringCommands.set(finalDateKey, toByteBuffer(buffer));
 
     }
@@ -164,8 +164,8 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     private Mono<Boolean> saveTomorrowData(byte[] buffer) {
         final String currentDate = getTomorrowDate();
-        final ByteBuffer tempDateKey = toByteBuffer(TEMP_DATE_KEY + currentDate);
         logger.info("saving data ... for ... tomorrow ... " + currentDate);
+        final ByteBuffer tempDateKey = toByteBuffer(TEMP_DATE_KEY + currentDate);
         return this.stringCommands.set(tempDateKey, toByteBuffer(buffer));
     }
 
@@ -184,12 +184,13 @@ public class AppCommandLineRunner implements CommandLineRunner {
                         return !e ?
                                 this.flashScoreService
                                         .fetchStanding(leagueId, stage)
+                                        .doOnError(err-> logger.error("in pipeline", err))
                                         .flatMap(l->this.stringCommands.set(toByteBuffer(key), toByteBuffer(serializeValuesAsString(l))))
                                 : Mono.just(false);
                     });
                 })
                 .subscribe(q -> {
-                    System.out.println(" all saved " + q);
+                    logger.info(" all saved " + q);
                 });
 
     }

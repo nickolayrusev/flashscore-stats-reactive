@@ -28,6 +28,7 @@ import reactor.util.function.Tuple5;
 import reactor.util.function.Tuples;
 
 import java.io.IOException;
+import java.nio.IntBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -86,21 +87,35 @@ public class FlashScoreService {
 
     public Mono<List<Standing>> fetchStanding(String league, String stage){
         String url = "http://d.flashscore.com/x/feed/ss_1_" + league + "_" + stage + "_table_overall";
+
         return fetchData(url).map(data -> {
             return Jsoup.parse(data, "utf-8")
                     .select(".stats-table-container tbody > tr")
                     .stream()
-                    .map(s->{
-                        Elements children = s.children();
+                    .map(tr->{
+                        List<String> th = Jsoup.parse(data).select("table thead > tr > th").eachAttr("data-type");
+                        Elements children = tr.children();
+                        String  participantName =  children.get( th.indexOf("participant_name")).text(),
+                                goals = children.get(th.indexOf("goals")).text();
+                        Integer
+                                rank = Integer.valueOf(children.get( th.indexOf("rank") ).text().replace(".","")),
+                                matchesPlayed = Integer.valueOf(children.get(th.indexOf("matches")).text()),
+                                wins = Integer.valueOf(children.get(th.indexOf("wins")).text()),
+                                losses = Integer.valueOf(children.get(th.indexOf("losses")).text()),
+                                points = Integer.valueOf(children.get( th.indexOf("points")).text()),
+                                draws = th.indexOf("draws") != -1 ? Integer.valueOf(children.get(th.indexOf("draws")).text()) :  0;
+
+                        logger.info("league " + league + " stage " + stage
+                                + " team " + children.get(1).text() + " gd " + children.get(6).text());
                         return Standing.builder()
-                                    .position(Integer.valueOf(children.get(0).text().replace(".","")))
-                                    .team(children.get(1).text())
-                                    .matchesPlayed(Integer.valueOf(children.get(2).text()))
-                                    .wins(Integer.valueOf(children.get(3).text()))
-                                    .draws(Integer.valueOf(children.get(4).text()))
-                                    .loses(Integer.valueOf(children.get(5).text()))
-                                    .goalDifference(children.get(6).text())
-                                    .points(Integer.valueOf(children.get(7).text()))
+                                    .position(rank)
+                                    .team(participantName)
+                                    .matchesPlayed(matchesPlayed)
+                                    .wins(wins)
+                                    .draws(draws)
+                                    .loses(losses)
+                                    .goalDifference(goals)
+                                    .points(points)
                                     .build();
                     })
                     .collect(toList());
