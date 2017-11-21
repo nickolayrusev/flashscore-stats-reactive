@@ -1,6 +1,9 @@
 package com.jboxers.flashscore.domain;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Builder;
 import lombok.Data;
 
@@ -14,12 +17,18 @@ import java.util.stream.Stream;
  */
 @Data
 @Builder
+//@JsonIgnoreProperties(ignoreUnknown = true)
 public class Game {
     private String home;
     private String away;
+    @JsonIgnore
     private LocalDate date;
     private String score;
     private String league;
+    private Boolean over;
+    private Boolean under;
+    private Integer totalGoals;
+    private Boolean bothTeamsScored;
 
     private static String[] splitScore(String score) {
         return score.contains("(") ?
@@ -38,10 +47,12 @@ public class Game {
         return splitScore(score).length == 2;
     }
 
+    @JsonGetter
     public boolean isOver() {
         return getTotalGoals() > 2.5;
     }
 
+    @JsonGetter
     public Integer getTotalGoals() {
         return Stream.of(getAwayScore(),getHomeScore())
                 .filter(Optional::isPresent)
@@ -49,10 +60,12 @@ public class Game {
                 .reduce(0,(a,b)-> a + b);
     }
 
+    @JsonGetter
     public boolean isUnder() {
         return !isOver();
     }
 
+    @JsonGetter
     public boolean isBothTeamsScored() {
         return Stream.of(getAwayScore(),getHomeScore())
                 .filter(Optional::isPresent)

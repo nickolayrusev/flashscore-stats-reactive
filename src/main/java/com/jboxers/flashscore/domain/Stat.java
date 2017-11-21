@@ -3,6 +3,7 @@ package com.jboxers.flashscore.domain;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import lombok.Builder;
 import lombok.Data;
+import lombok.ToString;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -12,6 +13,7 @@ import java.util.stream.Collectors;
  */
 @Data
 @Builder
+@ToString
 public class Stat {
     private static final int LIMIT = 20;
     private String id;
@@ -24,7 +26,7 @@ public class Stat {
     private List<Game> headToHeadGames;
     private List<Game> homeTeamGames;
     private List<Game> awayTeamGames;
-
+    private List<Standing> standing;
 
     @JsonGetter
     public List<Game> getHeadToHeadGames(){

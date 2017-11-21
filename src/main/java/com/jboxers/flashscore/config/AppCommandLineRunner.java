@@ -1,6 +1,7 @@
 package com.jboxers.flashscore.config;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.service.FlashScoreService;
@@ -20,12 +21,14 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -84,8 +87,16 @@ public class AppCommandLineRunner implements CommandLineRunner {
         }
     }
 
+    public List<Stat> deserializeValues(String s){
+        try {
+            return new ObjectMapper().readValue(s, new TypeReference<List<Stat>>(){} );
+        } catch (IOException e) {
+            System.err.println(e);
+            return Collections.emptyList();
+        }
+    }
 
-    private byte[] serializeValues(List<Stat> stats) {
+    private byte[] serializeValues(List<?> stats) {
         return serializeValuesAsString(stats).getBytes();
     }
 

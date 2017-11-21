@@ -105,8 +105,8 @@ public class FlashScoreService {
                                 points = Integer.valueOf(children.get( th.indexOf("points")).text()),
                                 draws = th.indexOf("draws") != -1 ? Integer.valueOf(children.get(th.indexOf("draws")).text()) :  0;
 
-                        logger.info("league " + league + " stage " + stage
-                                + " team " + children.get(1).text() + " gd " + children.get(6).text());
+//                        logger.info("league " + league + " stage " + stage
+//                                + " team " + children.get(1).text() + " gd " + children.get(6).text());
                         return Standing.builder()
                                     .position(rank)
                                     .team(participantName)
