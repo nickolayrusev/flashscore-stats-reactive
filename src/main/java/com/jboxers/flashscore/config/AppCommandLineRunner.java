@@ -3,6 +3,7 @@ package com.jboxers.flashscore.config;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jboxers.flashscore.domain.Standing;
 import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.service.FlashScoreService;
 import com.jboxers.flashscore.util.ByteBufferUtils;
@@ -95,6 +96,16 @@ public class AppCommandLineRunner implements CommandLineRunner {
             return Collections.emptyList();
         }
     }
+
+    public List<Standing> deserializeStandings(String s){
+        try {
+            return new ObjectMapper().readValue(s, new TypeReference<List<Standing>>(){} );
+        } catch (IOException e) {
+            System.err.println(e);
+            return Collections.emptyList();
+        }
+    }
+
 
     private byte[] serializeValues(List<?> stats) {
         return serializeValuesAsString(stats).getBytes();

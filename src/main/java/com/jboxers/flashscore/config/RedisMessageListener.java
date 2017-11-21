@@ -58,7 +58,7 @@ public class RedisMessageListener {
 
         listenerContainer.addMessageListener((message, pattern) -> {
             String m = new String(message.getBody());
-            System.out.println("received " + m);
+            logger.info("received " + m);
 
             if(m.equals("rpush"))
                 this.runner.saveStanding();
