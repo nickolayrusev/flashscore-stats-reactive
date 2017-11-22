@@ -113,7 +113,7 @@ public class FlashScoreService {
                                     .matchesPlayed(matchesPlayed)
                                     .wins(wins)
                                     .draws(draws)
-                                    .loses(losses)
+                                    .losses(losses)
                                     .goalDifference(goals)
                                     .points(points)
                                     .build();

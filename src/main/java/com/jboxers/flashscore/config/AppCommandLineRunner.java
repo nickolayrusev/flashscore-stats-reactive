@@ -88,20 +88,22 @@ public class AppCommandLineRunner implements CommandLineRunner {
         }
     }
 
-    public List<Stat> deserializeValues(String s){
+    public List<Stat> deserializeValues(String s) {
         try {
-            return new ObjectMapper().readValue(s, new TypeReference<List<Stat>>(){} );
+            return new ObjectMapper().readValue(s, new TypeReference<List<Stat>>() {
+            });
         } catch (IOException e) {
-            System.err.println(e);
+            logger.error("error while deserialize stats", e);
             return Collections.emptyList();
         }
     }
 
-    public List<Standing> deserializeStandings(String s){
+    public List<Standing> deserializeStandings(String s) {
         try {
-            return new ObjectMapper().readValue(s, new TypeReference<List<Standing>>(){} );
+            return new ObjectMapper().readValue(s, new TypeReference<List<Standing>>() {
+            });
         } catch (IOException e) {
-            System.err.println(e);
+            logger.error("error while deserialize standings", e);
             return Collections.emptyList();
         }
     }
@@ -116,15 +118,19 @@ public class AppCommandLineRunner implements CommandLineRunner {
                 .map(l -> {
                     List<ByteBuffer> collect =
                             l.stream()
-                                    .filter(q-> !q.getLeagueId().isEmpty() && !q.getLeagueStage().isEmpty())
-                                    .map(s-> "standing" + ":" + s.getLeagueId() + ":" + s.getLeagueStage())
+                                    .filter(q -> !q.getLeagueId().isEmpty() && !q.getLeagueStage().isEmpty())
+                                    .map(s -> "standing" + ":" + s.getLeagueId() + ":" + s.getLeagueStage())
                                     .distinct()
-                                    .map(s->ByteBufferUtils.toByteBuffer(s.getBytes()))
+                                    .map(s -> ByteBufferUtils.toByteBuffer(s.getBytes()))
                                     .collect(toList());
                     return Tuples.of(l, collect);
                 })
-                .map(l -> Tuples.of(l.getT1(), this.listCommands.rPush(toByteBuffer("chat"), l.getT2())))
-                .flatMap(q -> q.getT2().then(saveTodayData(serializeValues(q.getT1()))));
+                .flatMap(r ->
+                        this.listCommands.rPush(toByteBuffer("chat"), r.getT2())
+                                .flatMap(q -> saveTodayData(serializeValues(r.getT1())))
+                );
+//                .map(l -> Tuples.of(l.getT1(), this.listCommands.rPush(toByteBuffer("chat"), l.getT2())))
+//                .flatMap(q -> q.getT2().then(saveTodayData(serializeValues(q.getT1()))));
     }
 
     public Mono<Boolean> fetchTomorrowAndSave() {
@@ -193,21 +199,19 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     public void saveStanding() {
         this.listCommands.lLen(toByteBuffer("chat"))
-                .doOnNext(v -> System.out.println("length is " + v))
-                .map(q -> Flux.range(0, q.intValue()))
-                .flatMapMany(q -> q)
+                .doOnNext(v -> logger.info("length is " + v))
+                .flatMapMany(q -> Flux.range(0, q.intValue()))
                 .flatMap(r -> this.listCommands.rPop(toByteBuffer("chat")))
                 .map(ByteBufferUtils::toString)
-                .flatMap(key->{
-                    System.out.println(" key " + key);
+                .flatMap(key -> {
                     final String leagueId = key.split(":")[1];
                     final String stage = key.split(":")[2];
-                    return this.keyCommands.exists(toByteBuffer(key)).flatMap(e->{
+                    return this.keyCommands.exists(toByteBuffer(key)).flatMap(e -> {
                         return !e ?
                                 this.flashScoreService
                                         .fetchStanding(leagueId, stage)
-                                        .doOnError(err-> logger.error("in pipeline", err))
-                                        .flatMap(l->this.stringCommands.set(toByteBuffer(key), toByteBuffer(serializeValuesAsString(l))))
+                                        .doOnError(err -> logger.error("in pipeline", err))
+                                        .flatMap(l -> this.stringCommands.set(toByteBuffer(key), toByteBuffer(serializeValuesAsString(l))))
                                 : Mono.just(false);
                     });
                 })

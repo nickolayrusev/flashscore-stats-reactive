@@ -74,7 +74,7 @@ public class JSoupTest {
                     System.out.println("matches played " + e.children().get(2).text());
                     System.out.println("wins " + e.children().get(3).text());
                     System.out.println("draws " + e.children().get(4).text());
-                    System.out.println("loses " + e.children().get(5).text());
+                    System.out.println("losses " + e.children().get(5).text());
                     System.out.println("difference" + e.children().get(6).text());
                     System.out.println("points "+ e.children().get(7).text());
                 });

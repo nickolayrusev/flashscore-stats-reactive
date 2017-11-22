@@ -10,7 +10,7 @@ public class Standing {
     private String team;
     private int matchesPlayed;
     private int wins;
-    private int loses;
+    private int losses;
     private int draws;
     private String goalDifference;
     private int points;
