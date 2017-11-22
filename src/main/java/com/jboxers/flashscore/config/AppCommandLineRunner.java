@@ -129,8 +129,6 @@ public class AppCommandLineRunner implements CommandLineRunner {
                         this.listCommands.rPush(toByteBuffer("chat"), r.getT2())
                                 .flatMap(q -> saveTodayData(serializeValues(r.getT1())))
                 );
-//                .map(l -> Tuples.of(l.getT1(), this.listCommands.rPush(toByteBuffer("chat"), l.getT2())))
-//                .flatMap(q -> q.getT2().then(saveTodayData(serializeValues(q.getT1()))));
     }
 
     public Mono<Boolean> fetchTomorrowAndSave() {
@@ -206,17 +204,16 @@ public class AppCommandLineRunner implements CommandLineRunner {
                 .flatMap(key -> {
                     final String leagueId = key.split(":")[1];
                     final String stage = key.split(":")[2];
-                    return this.keyCommands.exists(toByteBuffer(key)).flatMap(e -> {
-                        return !e ?
-                                this.flashScoreService
-                                        .fetchStanding(leagueId, stage)
-                                        .doOnError(err -> logger.error("in pipeline", err))
-                                        .flatMap(l -> this.stringCommands.set(toByteBuffer(key), toByteBuffer(serializeValuesAsString(l))))
-                                : Mono.just(false);
-                    });
+                    return this.keyCommands.exists(toByteBuffer(key))
+                            .flatMap(e -> !e ?
+                                    this.flashScoreService
+                                            .fetchStanding(leagueId, stage)
+                                            .doOnError(err -> logger.error("in pipeline", err))
+                                            .flatMap(l -> this.stringCommands.set(toByteBuffer(key), toByteBuffer(serializeValuesAsString(l))))
+                                    : Mono.just(false));
                 })
                 .subscribe(q -> {
-                    logger.info(" all saved " + q);
+                    logger.info(" standing saved " + q);
                 });
 
     }

@@ -228,6 +228,7 @@ public class FlashScoreService {
                 .build();
     }
 
+    //ugly code... tryof vavr
     private Tuple2<String,String> extractTournamentIdAndStage(final String data) {
         String result = Jsoup.parse(data, "utf-8")
                 .select("script")
