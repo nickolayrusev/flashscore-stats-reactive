@@ -135,12 +135,16 @@ public class FlashScoreService {
                             t.getT5(),
                             "https://www.flashscore.com/match/" + t.getT1() +"/#match-summary");
                 })
-                .flatMap(t ->
-                        fetchData(t.getT1())
-                                .delayElement(Duration.ofMillis(300))
-                                .map(s -> Tuples.of(s, t.getT2(), t.getT3(), t.getT4(), t.getT5(), t.getT6()))
-                                .flatMap(q->fetchData(t.getT6()).map(d-> Tuples.of(q.getT1(),q.getT2(), q.getT3(), q.getT4(), q.getT5(),d)))
-                )
+                .flatMap(t -> {
+                             return Mono.zip(fetchData(t.getT1()), fetchData(t.getT6())).map(r->{
+                                 return Tuples.of(r.getT1(),t.getT2(), t.getT3(), t.getT4(), t.getT5(), r.getT2());
+                             });
+                        })
+//                        fetchData(t.getT1())
+//                                .delayElement(Duration.ofMillis(300))
+//                                .map(s -> Tuples.of(s, t.getT2(), t.getT3(), t.getT4(), t.getT5(), t.getT6()))
+//                                .flatMap(q->fetchData(t.getT6()).map(d-> Tuples.of(q.getT1(),q.getT2(), q.getT3(), q.getT4(), q.getT5(),d)))
+
                 .map(t -> extractGames(t.getT1(), t.getT2(), t.getT3(), t.getT4(), t.getT5(), t.getT6()))
                 .collectList();
     }
