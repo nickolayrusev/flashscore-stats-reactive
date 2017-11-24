@@ -19,7 +19,6 @@ import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 import java.io.IOException;
@@ -45,6 +44,7 @@ import static java.util.stream.Collectors.toList;
 @Component
 public class AppCommandLineRunner implements CommandLineRunner {
     private static final Logger logger = LoggerFactory.getLogger(RedisMessageListener.class);
+    public static final String STANDINGS = "standings";
 
     private static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -126,7 +126,7 @@ public class AppCommandLineRunner implements CommandLineRunner {
                     return Tuples.of(l, collect);
                 })
                 .flatMap(r ->
-                        this.listCommands.rPush(toByteBuffer("chat"), r.getT2())
+                        this.listCommands.rPush(toByteBuffer(STANDINGS), r.getT2())
                                 .flatMap(q -> saveTodayData(serializeValues(r.getT1())))
                 );
     }
@@ -196,7 +196,7 @@ public class AppCommandLineRunner implements CommandLineRunner {
     }
 
     public void saveStanding() {
-        this.listCommands.lLen(toByteBuffer("chat"))
+        this.listCommands.lLen(toByteBuffer(STANDINGS))
                 .doOnNext(v -> logger.info("length is " + v))
                 .flatMapMany(q -> Flux.range(0, q.intValue()))
                 .flatMap(r -> this.listCommands.rPop(toByteBuffer("chat")))

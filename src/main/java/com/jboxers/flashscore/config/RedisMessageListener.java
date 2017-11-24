@@ -6,12 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
 import java.time.Duration;
 
+import static com.jboxers.flashscore.config.AppCommandLineRunner.STANDINGS;
 import static com.jboxers.flashscore.web.GameController.SHADOW_DATE;
 
 @Configuration
@@ -62,7 +62,7 @@ public class RedisMessageListener {
 
             if(m.equals("rpush"))
                 this.runner.saveStanding();
-        }, new PatternTopic("__keyspace@0__:chat"));
+        }, new PatternTopic("__keyspace@0__:" + STANDINGS));
 
         return listenerContainer;
     }

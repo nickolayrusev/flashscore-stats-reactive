@@ -6,6 +6,7 @@ import com.jboxers.flashscore.domain.Game;
 import com.jboxers.flashscore.domain.Standing;
 import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.util.Gzip;
+import io.vavr.control.Try;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
@@ -173,7 +174,10 @@ public class FlashScoreService {
                             ).collect(Collector.of(
                                     ArrayDeque::new,
                                     ArrayDeque::addFirst,
-                                    (d1, d2) -> { d2.addAll(d1); return d2; }));
+                                    (d1, d2) -> {
+                                        d2.addAll(d1);
+                                        return d2;
+                                    }));
 
                     return Tuples.of(e.attr("href").substring(7, 15), //url
                             league, //league
@@ -226,24 +230,20 @@ public class FlashScoreService {
 
     //ugly code... tryof vavr
     private Tuple2<String, String> extractTournamentIdAndStage(final String data) {
-        String result = Jsoup.parse(data, "utf-8")
-                .select("script")
-                .stream()
-                .map(Node::outerHtml)
-                .filter(s -> s.contains("stats2Config"))
-                .findFirst()
-                .orElse("{}");
-        try {
+        return Try.of(() -> {
+            String result = Jsoup.parse(data, "utf-8")
+                    .select("script")
+                    .stream()
+                    .map(Node::outerHtml)
+                    .filter(s -> s.contains("stats2Config"))
+                    .findFirst()
+                    .orElse("{}");
+
             JsonNode jsonNode = this.objectMapper.readTree(result.substring(result.indexOf("{"), result.lastIndexOf("}") + 1));
-            if (jsonNode.hasNonNull("tournament") && jsonNode.hasNonNull("tournamentStage")) {
-                return Tuples.of(
-                        jsonNode.get("tournament").asText(),
-                        jsonNode.get("tournamentStage").asText());
-            }
-        } catch (IOException e) {
-            return Tuples.of("", "");
-        }
-        return Tuples.of("", "");
+            return Tuples.of(
+                    jsonNode.get("tournament").asText(),
+                    jsonNode.get("tournamentStage").asText());
+        }).getOrElse(Tuples.of("", ""));
     }
 
     private List<Game> parseGames(final String data, String className) {
