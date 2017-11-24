@@ -12,17 +12,13 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.BiConsumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static com.jboxers.flashscore.service.FlashScoreService.splitBySeparator;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Created by nikolayrusev on 7/28/17.
@@ -96,5 +92,21 @@ public class JSoupTest {
     @Test
     public void testInstant(){
         System.out.println(Instant.now().minus(1, ChronoUnit.DAYS));
+    }
+
+    @Test
+    public void testReverse(){
+        Stream.of("One", "Two", "Three", "Four")
+                .collect(Collectors.toCollection(LinkedList::new))
+                .descendingIterator().forEachRemaining(System.out::println);
+
+        Stream<String> input = Stream.of("a","b","c","d");
+        Deque<String> output =
+                input.collect(Collector.of(
+                        ArrayDeque::new,
+                        (deq, t) -> deq.addFirst(t),
+                        (d1, d2) -> { d2.addAll(d1); return d2; }));
+
+        output.forEach(System.out::println);
     }
 }

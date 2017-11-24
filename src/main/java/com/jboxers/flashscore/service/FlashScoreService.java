@@ -2,7 +2,6 @@ package com.jboxers.flashscore.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Lists;
 import com.jboxers.flashscore.domain.Game;
 import com.jboxers.flashscore.domain.Standing;
 import com.jboxers.flashscore.domain.Stat;
@@ -16,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -28,15 +26,11 @@ import reactor.util.function.Tuple5;
 import reactor.util.function.Tuples;
 
 import java.io.IOException;
-import java.nio.IntBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.logging.Level;
@@ -44,7 +38,6 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 
-import static java.util.stream.Collectors.averagingDouble;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -55,9 +48,11 @@ public class FlashScoreService {
 
     private final WebClient client;
     private final static Logger logger = LoggerFactory.getLogger(FlashScoreService.class);
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    public FlashScoreService(StringRedisTemplate stringRedisTemplate) {
+    public FlashScoreService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
         this.client = WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(ClientOptions.Builder::disablePool))
                 .build();
@@ -85,38 +80,38 @@ public class FlashScoreService {
         return fetch(YESTERDAY);
     }
 
-    public Mono<List<Standing>> fetchStanding(String league, String stage){
+    public Mono<List<Standing>> fetchStanding(String league, String stage) {
         String url = "http://d.flashscore.com/x/feed/ss_1_" + league + "_" + stage + "_table_overall";
 
         return fetchData(url).map(data -> {
             return Jsoup.parse(data, "utf-8")
                     .select(".stats-table-container tbody > tr")
                     .stream()
-                    .map(tr->{
+                    .map(tr -> {
                         List<String> th = Jsoup.parse(data).select("table thead > tr > th").eachAttr("data-type");
                         Elements children = tr.children();
-                        String  participantName =  children.get( th.indexOf("participant_name")).text(),
+                        String participantName = children.get(th.indexOf("participant_name")).text(),
                                 goals = children.get(th.indexOf("goals")).text();
                         Integer
-                                rank = Integer.valueOf(children.get( th.indexOf("rank") ).text().replace(".","")),
+                                rank = Integer.valueOf(children.get(th.indexOf("rank")).text().replace(".", "")),
                                 matchesPlayed = Integer.valueOf(children.get(th.indexOf("matches")).text()),
                                 wins = Integer.valueOf(children.get(th.indexOf("wins")).text()),
                                 losses = Integer.valueOf(children.get(th.indexOf("losses")).text()),
-                                points = Integer.valueOf(children.get( th.indexOf("points")).text()),
-                                draws = th.indexOf("draws") != -1 ? Integer.valueOf(children.get(th.indexOf("draws")).text()) :  0;
+                                points = Integer.valueOf(children.get(th.indexOf("points")).text()),
+                                draws = th.indexOf("draws") != -1 ? Integer.valueOf(children.get(th.indexOf("draws")).text()) : 0;
 
 //                        logger.info("league " + league + " stage " + stage
 //                                + " team " + children.get(1).text() + " gd " + children.get(6).text());
                         return Standing.builder()
-                                    .position(rank)
-                                    .team(participantName)
-                                    .matchesPlayed(matchesPlayed)
-                                    .wins(wins)
-                                    .draws(draws)
-                                    .losses(losses)
-                                    .goalDifference(goals)
-                                    .points(points)
-                                    .build();
+                                .position(rank)
+                                .team(participantName)
+                                .matchesPlayed(matchesPlayed)
+                                .wins(wins)
+                                .draws(draws)
+                                .losses(losses)
+                                .goalDifference(goals)
+                                .points(points)
+                                .build();
                     })
                     .collect(toList());
         });
@@ -133,18 +128,12 @@ public class FlashScoreService {
                             t.getT3(),
                             t.getT4(),
                             t.getT5(),
-                            "https://www.flashscore.com/match/" + t.getT1() +"/#match-summary");
+                            "https://www.flashscore.com/match/" + t.getT1() + "/#match-summary");
                 })
-                .flatMap(t -> {
-                             return Mono.zip(fetchData(t.getT1()), fetchData(t.getT6())).map(r->{
-                                 return Tuples.of(r.getT1(),t.getT2(), t.getT3(), t.getT4(), t.getT5(), r.getT2());
-                             });
-                        })
-//                        fetchData(t.getT1())
-//                                .delayElement(Duration.ofMillis(300))
-//                                .map(s -> Tuples.of(s, t.getT2(), t.getT3(), t.getT4(), t.getT5(), t.getT6()))
-//                                .flatMap(q->fetchData(t.getT6()).map(d-> Tuples.of(q.getT1(),q.getT2(), q.getT3(), q.getT4(), q.getT5(),d)))
-
+                .flatMap(t ->
+                        Mono.zip(fetchData(t.getT1()), fetchData(t.getT6()))
+                                .map(r -> Tuples.of(r.getT1(), t.getT2(), t.getT3(), t.getT4(), t.getT5(), r.getT2()))
+                )
                 .map(t -> extractGames(t.getT1(), t.getT2(), t.getT3(), t.getT4(), t.getT5(), t.getT6()))
                 .collectList();
     }
@@ -170,7 +159,7 @@ public class FlashScoreService {
                             .map(Element::text)
                             .orElse("");
 
-                    List<String> nodes = e.parent()
+                    Deque<String> nodes = e.parent()
                             .childNodes()
                             .stream()
                             .filter(s -> s.siblingIndex() < e.siblingIndex())
@@ -181,13 +170,16 @@ public class FlashScoreService {
                                     .map(String::trim)
                                     .filter(c -> !c.isEmpty())
                                     .collect(Collectors.joining(" "))
-                            ).collect(toList());
+                            ).collect(Collector.of(
+                                    ArrayDeque::new,
+                                    ArrayDeque::addFirst,
+                                    (d1, d2) -> { d2.addAll(d1); return d2; }));
 
                     return Tuples.of(e.attr("href").substring(7, 15), //url
                             league, //league
                             e.className(), //state
                             e.text(),//score
-                            Lists.reverse(nodes).get(0));//id
+                            nodes.getFirst());//id
                 }).collect(toList());
     }
 
@@ -233,25 +225,25 @@ public class FlashScoreService {
     }
 
     //ugly code... tryof vavr
-    private Tuple2<String,String> extractTournamentIdAndStage(final String data) {
+    private Tuple2<String, String> extractTournamentIdAndStage(final String data) {
         String result = Jsoup.parse(data, "utf-8")
                 .select("script")
                 .stream()
                 .map(Node::outerHtml)
-                .filter(s->s.contains("stats2Config"))
+                .filter(s -> s.contains("stats2Config"))
                 .findFirst()
                 .orElse("{}");
         try {
-            JsonNode jsonNode = new ObjectMapper().readTree(result.substring(result.indexOf("{"), result.lastIndexOf("}")+1));
-            if(jsonNode.hasNonNull("tournament") && jsonNode.hasNonNull("tournamentStage")) {
+            JsonNode jsonNode = this.objectMapper.readTree(result.substring(result.indexOf("{"), result.lastIndexOf("}") + 1));
+            if (jsonNode.hasNonNull("tournament") && jsonNode.hasNonNull("tournamentStage")) {
                 return Tuples.of(
                         jsonNode.get("tournament").asText(),
                         jsonNode.get("tournamentStage").asText());
             }
         } catch (IOException e) {
-            return Tuples.of("","");
+            return Tuples.of("", "");
         }
-        return Tuples.of("","");
+        return Tuples.of("", "");
     }
 
     private List<Game> parseGames(final String data, String className) {
