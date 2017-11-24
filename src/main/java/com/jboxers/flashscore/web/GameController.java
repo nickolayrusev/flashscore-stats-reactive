@@ -56,7 +56,7 @@ public class GameController {
                         : this.stringCommands.get(toByteBuffer(FINAL_DATE_KEY + date)))
                 .flatMapIterable(l-> runner.deserializeValues(ByteBufferUtils.toString(l)))
                 .flatMap(s->{
-                    System.out.println("stat is " + s);
+                    // don't like this style of decorating stat object with standing
                     return this.stringCommands.get(toByteBuffer("standing:" + s.getLeagueId() + ":"+ s.getLeagueStage())).map(r->{
                         s.setStanding(runner.deserializeStandings(ByteBufferUtils.toString(r)));
                         return s;

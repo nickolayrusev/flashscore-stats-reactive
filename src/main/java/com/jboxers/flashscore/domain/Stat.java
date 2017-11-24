@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
  */
 @Data
 @Builder
-@ToString
 public class Stat {
     private static final int LIMIT = 20;
     private String id;
