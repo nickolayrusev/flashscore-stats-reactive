@@ -90,7 +90,7 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     public List<Stat> deserializeValues(String s) {
         try {
-            return new ObjectMapper().readValue(s, new TypeReference<List<Stat>>() {
+            return this.objectMapper.readValue(s, new TypeReference<List<Stat>>() {
             });
         } catch (IOException e) {
             logger.error("error while deserialize stats", e);
@@ -100,7 +100,7 @@ public class AppCommandLineRunner implements CommandLineRunner {
 
     public List<Standing> deserializeStandings(String s) {
         try {
-            return new ObjectMapper().readValue(s, new TypeReference<List<Standing>>() {
+            return this.objectMapper.readValue(s, new TypeReference<List<Standing>>() {
             });
         } catch (IOException e) {
             logger.error("error while deserialize standings", e);
