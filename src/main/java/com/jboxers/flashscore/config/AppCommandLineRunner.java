@@ -199,7 +199,7 @@ public class AppCommandLineRunner implements CommandLineRunner {
         this.listCommands.lLen(toByteBuffer(STANDINGS))
                 .doOnNext(v -> logger.info("length is " + v))
                 .flatMapMany(q -> Flux.range(0, q.intValue()))
-                .flatMap(r -> this.listCommands.rPop(toByteBuffer("chat")))
+                .flatMap(r -> this.listCommands.rPop(toByteBuffer(STANDINGS)))
                 .map(ByteBufferUtils::toString)
                 .flatMap(key -> {
                     final String leagueId = key.split(":")[1];
