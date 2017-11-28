@@ -1,11 +1,15 @@
 package com.jboxers.flashscore;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.junit.Test;
+import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 import java.io.File;
@@ -108,5 +112,12 @@ public class JSoupTest {
                         (d1, d2) -> { d2.addAll(d1); return d2; }));
 
         output.forEach(System.out::println);
+    }
+    @Test
+    public void testSerialization() throws JsonProcessingException {
+        Tuple2<String, String> tuple2 = Tuples.of("hi", "world");
+        ObjectNode node = new ObjectNode(JsonNodeFactory.instance).put("hello", "world");
+        System.out.println(new ObjectMapper().writeValueAsString(tuple2));
+        System.out.println(new ObjectMapper().writeValueAsString(node));
     }
 }

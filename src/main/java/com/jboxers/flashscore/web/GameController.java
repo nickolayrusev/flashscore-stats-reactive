@@ -1,6 +1,7 @@
 package com.jboxers.flashscore.web;
 
 import com.jboxers.flashscore.config.AppCommandLineRunner;
+import com.jboxers.flashscore.domain.FullStat;
 import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.util.ByteBufferUtils;
 import org.slf4j.Logger;
@@ -49,17 +50,15 @@ public class GameController {
     }
 
     @GetMapping("/games/{date}")
-    public Flux<Stat> games(@PathVariable("date") String date) {
+    public Flux<FullStat> games(@PathVariable("date") String date) {
         return this.keyCommands.exists(toByteBuffer(TEMP_DATE_KEY + date))
                 .flatMap(r -> r ?
                         this.stringCommands.get(toByteBuffer(TEMP_DATE_KEY + date))
                         : this.stringCommands.get(toByteBuffer(FINAL_DATE_KEY + date)))
                 .flatMapIterable(l-> runner.deserializeValues(ByteBufferUtils.toString(l)))
                 .flatMap(s->{
-                    // don't like this style of decorating stat object with standing
                     return this.stringCommands.get(toByteBuffer("standing:" + s.getLeagueId() + ":"+ s.getLeagueStage())).map(r->{
-                        s.setStanding(runner.deserializeStandings(ByteBufferUtils.toString(r)));
-                        return s;
+                        return new FullStat(s,runner.deserializeStandings(ByteBufferUtils.toString(r)));
                     });
                 });
     }

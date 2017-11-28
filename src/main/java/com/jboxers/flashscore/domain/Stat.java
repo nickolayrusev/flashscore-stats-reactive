@@ -25,7 +25,6 @@ public class Stat {
     private List<Game> headToHeadGames;
     private List<Game> homeTeamGames;
     private List<Game> awayTeamGames;
-    private List<Standing> standing;
 
     @JsonGetter
     public List<Game> getHeadToHeadGames(){
