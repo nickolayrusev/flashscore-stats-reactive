@@ -26,7 +26,6 @@ import reactor.util.function.Tuple2;
 import reactor.util.function.Tuple5;
 import reactor.util.function.Tuples;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -228,7 +227,6 @@ public class FlashScoreService {
                 .build();
     }
 
-    //ugly code... tryof vavr
     private Tuple2<String, String> extractTournamentIdAndStage(final String data) {
         return Try.of(() -> {
             String result = Jsoup.parse(data, "utf-8")

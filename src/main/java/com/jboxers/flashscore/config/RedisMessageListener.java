@@ -1,5 +1,6 @@
 package com.jboxers.flashscore.config;
 
+import com.jboxers.flashscore.service.AppService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,18 +12,18 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
 import java.time.Duration;
 
-import static com.jboxers.flashscore.config.AppCommandLineRunner.STANDINGS;
+import static com.jboxers.flashscore.service.AppService.STANDINGS;
 import static com.jboxers.flashscore.web.GameController.SHADOW_DATE;
 
 @Configuration
 public class RedisMessageListener {
     private static final Logger logger = LoggerFactory.getLogger(RedisMessageListener.class);
 
-    private final AppCommandLineRunner runner;
+    private final AppService runner;
     private final RedisConnectionFactory redisConnectionFactory;
 
     @Autowired
-    public RedisMessageListener(AppCommandLineRunner runner,
+    public RedisMessageListener(AppService runner,
                                 RedisConnectionFactory redisConnectionFactory ) {
         this.runner = runner;
         this.redisConnectionFactory = redisConnectionFactory;
@@ -61,7 +62,7 @@ public class RedisMessageListener {
             logger.info("received " + m);
 
             if(m.equals("rpush"))
-                this.runner.saveStanding();
+                this.runner.saveStanding().subscribe(q-> logger.info("standing saved " + q));
         }, new PatternTopic("__keyspace@0__:" + STANDINGS));
 
         return listenerContainer;

@@ -1,8 +1,7 @@
 package com.jboxers.flashscore.web;
 
-import com.jboxers.flashscore.config.AppCommandLineRunner;
+import com.jboxers.flashscore.service.AppService;
 import com.jboxers.flashscore.domain.FullStat;
-import com.jboxers.flashscore.domain.Stat;
 import com.jboxers.flashscore.util.ByteBufferUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,8 +15,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
-
-import java.nio.ByteBuffer;
 
 import static com.jboxers.flashscore.util.ByteBufferUtils.toByteBuffer;
 
@@ -39,10 +36,10 @@ public class GameController {
 
     private final ReactiveStringCommands stringCommands;
     private final ReactiveKeyCommands keyCommands;
-    private final AppCommandLineRunner runner;
+    private final AppService runner;
 
     @Autowired
-    public GameController(ReactiveRedisConnectionFactory factory, AppCommandLineRunner runner) {
+    public GameController(ReactiveRedisConnectionFactory factory, AppService runner) {
         this.runner = runner;
         ReactiveRedisConnection connection = factory.getReactiveConnection();
         this.stringCommands = connection.stringCommands();
@@ -55,7 +52,7 @@ public class GameController {
                 .flatMap(r -> r ?
                         this.stringCommands.get(toByteBuffer(TEMP_DATE_KEY + date))
                         : this.stringCommands.get(toByteBuffer(FINAL_DATE_KEY + date)))
-                .flatMapIterable(l-> runner.deserializeValues(ByteBufferUtils.toString(l)))
+                .flatMapIterable(l-> runner.deserializeStats(ByteBufferUtils.toString(l)))
                 .flatMap(s->{
                     return this.stringCommands.get(toByteBuffer("standing:" + s.getLeagueId() + ":"+ s.getLeagueStage())).map(r->{
                         return new FullStat(s,runner.deserializeStandings(ByteBufferUtils.toString(r)));
