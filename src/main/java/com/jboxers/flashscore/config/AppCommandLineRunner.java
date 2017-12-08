@@ -18,9 +18,9 @@ public class AppCommandLineRunner  implements CommandLineRunner{
 
     @Override
     public void run(String... strings) throws Exception {
-        this.appService.fetchTodayAndSave()
-                .delayElement(Duration.ofSeconds(10))
-                .then(this.appService.fetchTomorrowAndSave())
-                .subscribe();
+//        this.appService.fetchTodayAndSave()
+//                .delayElement(Duration.ofSeconds(10))
+//                .then(this.appService.fetchTomorrowAndSave())
+//                .subscribe();
     }
 }

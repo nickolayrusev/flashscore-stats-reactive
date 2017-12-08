@@ -196,10 +196,13 @@ public class FlashScoreService {
                 .header("Pragma", "no-cache")
                 .header("Cache-control", "no-cache")
                 .exchange()
-                .flatMap(response -> response.bodyToMono(ByteArrayResource.class))
-                .map(s -> Gzip.decompress(s.getByteArray()))
+                .flatMap(response -> {
+                    if(!response.statusCode().is2xxSuccessful())
+                        throw new IllegalStateException(response.statusCode().value() + " " + response.statusCode().getReasonPhrase());
+                    return response.bodyToMono(ByteArrayResource.class).map(s->Gzip.decompress(s.getByteArray()));
+                })
                 .timeout(Duration.ofSeconds(45))
-                .retry(3, (e) -> e instanceof TimeoutException)
+                .retry(2, (e) -> e instanceof TimeoutException || e instanceof IllegalStateException)
                 .onErrorResume(e -> {
                     logger.error("error while retrieving game meta", e);
                     return Mono.empty();
